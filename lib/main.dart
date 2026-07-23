@@ -10,15 +10,10 @@ import 'features/safety/sos_button_widget.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize persistent session storage
   await SessionStorage.init();
-
-  // Initialize Firebase (silently fail if google-services.json not configured)
   try {
     await Firebase.initializeApp();
   } catch (_) {}
-
   runApp(const LumoCustomerApp());
 }
 
@@ -37,7 +32,6 @@ class LumoCustomerApp extends StatelessWidget {
   }
 }
 
-/// AuthGate: checks session and routes to auth or main app
 class _AuthGate extends StatefulWidget {
   const _AuthGate();
 
@@ -58,7 +52,8 @@ class _AuthGateState extends State<_AuthGate> {
     if (mounted) setState(() => _isAuthenticated = true);
   }
 
-  void _onLogout() {
+  void _onLogout() async {
+    await SessionStorage.clearSession();
     if (mounted) setState(() => _isAuthenticated = false);
   }
 
@@ -77,7 +72,6 @@ class _AuthGateState extends State<_AuthGate> {
   }
 }
 
-/// Main app shell with bottom navigation
 class MainAppShell extends StatefulWidget {
   final VoidCallback onLogout;
   const MainAppShell({super.key, required this.onLogout});
@@ -88,11 +82,6 @@ class MainAppShell extends StatefulWidget {
 
 class _MainAppShellState extends State<MainAppShell> {
   int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,9 +97,7 @@ class _MainAppShellState extends State<MainAppShell> {
         index: _currentIndex,
         children: pages,
       ),
-      floatingActionButton: _currentIndex == 0
-          ? const SosButtonWidget()
-          : null,
+      floatingActionButton: _currentIndex == 0 ? const SosButtonWidget() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: _BottomNav(
         currentIndex: _currentIndex,
@@ -120,7 +107,6 @@ class _MainAppShellState extends State<MainAppShell> {
   }
 }
 
-// ─── Home Tab (with AppBar) ──────────────────────────────────────────────────
 class _HomeTab extends StatelessWidget {
   const _HomeTab();
 
@@ -134,12 +120,8 @@ class _HomeTab extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('LUMO',
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-            Text(SessionStorage.userPhone,
-                style: const TextStyle(
-                    fontSize: 10, fontFamily: 'monospace', color: AppColors.textMuted)),
+            const Text('LUMO', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+            Text(SessionStorage.userPhone, style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.textMuted)),
           ],
         ),
         actions: [
@@ -155,11 +137,7 @@ class _HomeTab extends StatelessWidget {
               children: [
                 Icon(Icons.verified_user, color: AppColors.successGreen, size: 12),
                 SizedBox(width: 4),
-                Text('SAFE',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.successGreen)),
+                Text('SAFE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.successGreen)),
               ],
             ),
           ),
@@ -177,7 +155,6 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-// ─── Bottom Navigation ───────────────────────────────────────────────────────
 class _BottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -248,22 +225,17 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  isSelected ? activeIcon : icon,
-                  key: ValueKey(isSelected),
-                  color: isSelected ? AppColors.primary : AppColors.textMuted,
-                  size: 24,
-                ),
+              Icon(
+                isSelected ? activeIcon : icon,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+                size: 24,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight:
-                      isSelected ? FontWeight.w700 : FontWeight.w400,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
                   color: isSelected ? AppColors.primary : AppColors.textMuted,
                 ),
               ),

@@ -1,12 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Persistent session storage using shared_preferences
 class SessionStorage {
-  static const _keyToken = 'lumo_access_token';
-  static const _keyPhone = 'lumo_user_phone';
-  static const _keyName = 'lumo_user_name';
-  static const _keyUserId = 'lumo_user_id';
-  static const _keyAuthenticated = 'lumo_is_authenticated';
+  static const _keyToken = 'access_token';
+  static const _keyPhone = 'user_phone';
+  static const _keyName = 'user_name';
+  static const _keyUserId = 'user_id';
+  static const _keyAuthenticated = 'is_authenticated';
 
   static SharedPreferences? _prefs;
 
@@ -23,7 +22,7 @@ class SessionStorage {
   static Future<void> setSession({
     required String token,
     required String phone,
-    String name = 'Customer User',
+    String name = 'Customer',
     String? userId,
   }) async {
     await _prefs?.setBool(_keyAuthenticated, true);
