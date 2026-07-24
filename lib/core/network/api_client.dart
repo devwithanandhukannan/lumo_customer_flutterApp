@@ -3,7 +3,11 @@ import 'package:http/http.dart' as http;
 import '../storage/session_storage.dart';
 
 class ApiClient {
-  static String baseUrl = 'http://192.168.1.8:8000';
+  static String _defaultBaseUrl() {
+    return 'http://192.168.1.2:8000';
+  }
+
+  static String baseUrl = _defaultBaseUrl();
 
   static void updateBaseUrl(String url) {
     baseUrl = url.startsWith('http') ? url.trim() : 'http://$url';
@@ -17,12 +21,50 @@ class ApiClient {
           'Authorization': 'Bearer ${SessionStorage.authToken}',
       };
 
+  static Future<http.Response> _requestWithFallback(
+    Future<http.Response> Function(String currentUrl) requestFn,
+  ) async {
+    final candidateUrls = <String>{
+      baseUrl,
+      'http://192.168.1.2:8000',
+      'http://10.0.2.2:8000',
+      'http://127.0.0.1:8000',
+      'http://localhost:8000',
+      'http://192.168.1.8:8000',
+    }.toList();
+
+    Object? lastError;
+
+    for (final candidate in candidateUrls) {
+      try {
+        final response = await requestFn(candidate).timeout(const Duration(seconds: 3));
+        baseUrl = candidate;
+        return response;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+
+    if (lastError != null) {
+      if (lastError.toString().contains('Socket') ||
+          lastError.toString().contains('No route to host') ||
+          lastError.toString().contains('TimeoutException')) {
+        throw Exception(
+          'Backend API Gateway unreachable at $baseUrl. Ensure ./run-all.sh is running in backend directory and phone is on same Wi-Fi network.',
+        );
+      }
+      throw lastError;
+    }
+
+    throw Exception('Connection failed');
+  }
+
   static Future<Map<String, dynamic>> sendOtp(String phoneNumber) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/api/v1/auth/otp/send'),
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/auth/otp/send'),
       headers: _publicHeaders,
       body: jsonEncode({'phoneNumber': phoneNumber}),
-    ).timeout(const Duration(seconds: 10));
+    ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return body;
     throw Exception(body['message'] ?? 'Failed to send OTP');
@@ -31,46 +73,53 @@ class ApiClient {
   static Future<Map<String, dynamic>> verifyOtp({
     required String phoneNumber,
     required String otp,
-    String role = 'CUSTOMER',
+    String fullName = 'Customer',
+    String gender = 'OTHER',
   }) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/api/v1/auth/otp/verify'),
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/auth/otp/verify'),
       headers: _publicHeaders,
-      body: jsonEncode({'phoneNumber': phoneNumber, 'otp': otp, 'role': role}),
-    ).timeout(const Duration(seconds: 10));
+      body: jsonEncode({
+        'phoneNumber': phoneNumber,
+        'otp': otp,
+        'role': 'CUSTOMER',
+        'fullName': fullName,
+        'gender': gender,
+      }),
+    ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return body;
     throw Exception(body['message'] ?? 'Invalid OTP');
   }
 
-  static Future<Map<String, dynamic>> firebaseLogin({
-    required String idToken,
-    String role = 'CUSTOMER',
-    String? fullName,
-  }) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/api/v1/auth/firebase-login'),
+  static Future<Map<String, dynamic>> loginWithFirebaseToken(String idToken) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/auth/firebase-login'),
       headers: _publicHeaders,
-      body: jsonEncode({'idToken': idToken, 'role': role, 'fullName': fullName}),
-    ).timeout(const Duration(seconds: 10));
+      body: jsonEncode({'idToken': idToken}),
+    ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return body;
-    throw Exception(body['message'] ?? 'Firebase authentication failed');
+    throw Exception(body['message'] ?? 'Firebase Auth failed');
   }
 
   static Future<List<dynamic>> getCategories() async {
-    final res = await http.get(Uri.parse('$baseUrl/api/v1/catalog/categories'), headers: _publicHeaders)
-        .timeout(const Duration(seconds: 10));
+    final res = await _requestWithFallback((url) => http.get(
+      Uri.parse('$url/api/v1/catalog/categories'),
+      headers: _publicHeaders,
+    ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return (body['data'] as List?) ?? [];
     throw Exception(body['message'] ?? 'Failed to load categories');
   }
 
   static Future<List<dynamic>> getServices({String? categoryId}) async {
-    final uri = categoryId != null
-        ? Uri.parse('$baseUrl/api/v1/catalog/services?categoryId=$categoryId')
-        : Uri.parse('$baseUrl/api/v1/catalog/services');
-    final res = await http.get(uri, headers: _publicHeaders).timeout(const Duration(seconds: 10));
+    final res = await _requestWithFallback((url) {
+      final uri = categoryId != null
+          ? '$url/api/v1/catalog/services?categoryId=$categoryId'
+          : '$url/api/v1/catalog/services';
+      return http.get(Uri.parse(uri), headers: _publicHeaders);
+    });
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return (body['data'] as List?) ?? [];
     throw Exception(body['message'] ?? 'Failed to load services');
@@ -78,30 +127,34 @@ class ApiClient {
 
   static Future<Map<String, dynamic>> createBooking({
     required String serviceId,
+    required String scheduledAt,
     required String addressText,
-    required double latitude,
-    required double longitude,
+    double? latitude,
+    double? longitude,
     bool femaleProPreferred = false,
   }) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/api/v1/bookings'),
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/bookings'),
       headers: _authHeaders,
       body: jsonEncode({
         'serviceId': serviceId,
+        'scheduledAt': scheduledAt,
         'addressText': addressText,
-        'latitude': latitude,
-        'longitude': longitude,
+        'latitude': latitude ?? 12.9716,
+        'longitude': longitude ?? 77.5946,
         'femaleProPreferred': femaleProPreferred,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ));
     final body = jsonDecode(res.body);
-    if (res.statusCode == 200 || res.statusCode == 201) return body;
+    if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
     throw Exception(body['message'] ?? 'Failed to create booking');
   }
 
   static Future<List<dynamic>> getMyBookings() async {
-    final res = await http.get(Uri.parse('$baseUrl/api/v1/bookings/my-bookings'), headers: _authHeaders)
-        .timeout(const Duration(seconds: 10));
+    final res = await _requestWithFallback((url) => http.get(
+      Uri.parse('$url/api/v1/bookings/my-bookings'),
+      headers: _authHeaders,
+    ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return (body['data'] as List?) ?? [];
     throw Exception(body['message'] ?? 'Failed to load bookings');
@@ -111,20 +164,82 @@ class ApiClient {
     required double latitude,
     required double longitude,
     String? bookingId,
-    String notes = 'Emergency SOS',
+    String notes = 'Customer Emergency SOS',
   }) async {
-    await http.post(
-      Uri.parse('$baseUrl/api/v1/safety/sos/trigger'),
+    await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/safety/sos/trigger'),
       headers: _authHeaders,
-      body: jsonEncode({'latitude': latitude, 'longitude': longitude, 'notes': notes, if (bookingId != null) 'bookingId': bookingId}),
-    ).timeout(const Duration(seconds: 10));
+      body: jsonEncode({
+        'latitude': latitude,
+        'longitude': longitude,
+        'notes': notes,
+        ...?bookingId == null ? null : {'bookingId': bookingId},
+      }),
+    ));
   }
 
   static Future<Map<String, dynamic>> getMyProfile() async {
-    final res = await http.get(Uri.parse('$baseUrl/api/v1/users/me'), headers: _authHeaders)
-        .timeout(const Duration(seconds: 10));
+    final res = await _requestWithFallback((url) => http.get(
+      Uri.parse('$url/api/v1/users/me'),
+      headers: _authHeaders,
+    ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return body['data'] ?? body;
-    throw Exception(body['message'] ?? 'Failed to load profile');
+    throw Exception(body['message'] ?? 'Failed to load user profile');
+  }
+
+  // Complete customer profile after OTP (name, age, sex, email)
+  static Future<Map<String, dynamic>> completeProfile({
+    required String name,
+    required int age,
+    required String sex,
+    String? email,
+  }) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/auth/customer/complete-profile'),
+      headers: _authHeaders,
+      body: jsonEncode({'fullName': name, 'age': age, 'sex': sex, 'email': email}),
+    ));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200) return body['data'] ?? body;
+    throw Exception(body['message'] ?? 'Failed to update profile');
+  }
+
+  // Cancel an active booking
+  static Future<void> cancelBooking(String bookingId) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/bookings/$bookingId/cancel'),
+      headers: _authHeaders,
+    ));
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to cancel booking');
+    }
+  }
+
+  // Get assigned professional details for a booking
+  static Future<Map<String, dynamic>?> getBookingProDetails(String bookingId) async {
+    try {
+      final res = await _requestWithFallback((url) => http.get(
+        Uri.parse('$url/api/v1/bookings/$bookingId'),
+        headers: _authHeaders,
+      ));
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 200) return (body['data'] as Map<String, dynamic>?) ?? {};
+    } catch (_) {}
+    return null;
+  }
+
+  // Change password
+  static Future<void> changePassword(String oldPassword, String newPassword) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/users/change-password'),
+      headers: _authHeaders,
+      body: jsonEncode({'oldPassword': oldPassword, 'newPassword': newPassword}),
+    ));
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to change password');
+    }
   }
 }

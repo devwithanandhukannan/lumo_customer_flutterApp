@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -7,7 +8,13 @@ class AppColors {
   static const Color inputFill = Color(0xFF0E1420);
 
   static const Color border = Color(0x1AFFFFFF);
+  static const Color glassBg = Color(0x1AFFFFFF);
+  static const Color glassBorder = Color(0x26FFFFFF);
+  static const Color glassBorderBright = Color(0x40FFFFFF);
+
   static const Color primary = Color(0xFF3B82F6);
+  static const Color primaryDark = Color(0xFF2563EB);
+  static const Color primarySoft = Color(0x1A3B82F6);
   static const Color primaryLight = Color(0xFF93C5FD);
   static const Color secondary = Color(0xFF6366F1);
   static const Color emergencyRed = Color(0xFFEF4444);
@@ -32,24 +39,119 @@ class AppText {
   static const TextStyle caption = TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.textMuted);
   static const TextStyle mono = TextStyle(fontSize: 13, fontFamily: 'monospace', color: AppColors.textPrimary);
   static const TextStyle label = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 0.8);
+  static const TextStyle buttonText = TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.8);
 }
 
 InputDecoration lumoInputDecoration({String? hint, Widget? prefix, Widget? suffix, String? label}) {
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: AppColors.textDisabled),
+    hintStyle: const TextStyle(color: AppColors.textDisabled, fontSize: 14),
     labelText: label,
     labelStyle: AppText.caption,
     prefixIcon: prefix,
     suffixIcon: suffix,
     filled: true,
-    fillColor: AppColors.inputFill,
-    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.border)),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.emergencyRed)),
-    focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.emergencyRed, width: 1.5)),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    fillColor: const Color(0x14FFFFFF),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.glassBorder)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.emergencyRed)),
+    focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.emergencyRed, width: 1.5)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
   );
+}
+
+// ─── Glassmorphism GlassCard Widget ──────────────────────────────────────────
+class AppGlassCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final double blurRadius;
+  final Color borderColor;
+  final double borderRadius;
+  final List<Color>? gradientColors;
+  final VoidCallback? onTap;
+
+  const AppGlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.blurRadius = 20,
+    this.borderColor = AppColors.glassBorder,
+    this.borderRadius = 20,
+    this.gradientColors,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blurRadius, sigmaY: blurRadius),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors ?? [const Color(0x1AFFFFFF), const Color(0x0AFFFFFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: child,
+        ),
+      ),
+    );
+    if (onTap != null) return GestureDetector(onTap: onTap, child: content);
+    return content;
+  }
+}
+
+// ─── Gradient Button ──────────────────────────────────────────────────────────
+class AppGradientButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool isLoading;
+  final double height;
+  final List<Color> colors;
+  final IconData? icon;
+
+  const AppGradientButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.isLoading = false,
+    this.height = 54,
+    this.colors = const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: height,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: isLoading ? [AppColors.surface, AppColors.surface] : colors),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isLoading ? [] : [BoxShadow(color: colors.first.withAlpha(80), blurRadius: 20, offset: const Offset(0, 8))],
+        ),
+        child: Center(
+          child: isLoading
+              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[Icon(icon, color: Colors.white, size: 18), const SizedBox(width: 8)],
+                    Text(label, style: AppText.buttonText),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
 }
 
 class AppTheme {

@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
 import 'core/storage/session_storage.dart';
 import 'features/auth/auth_screen.dart';
+import 'features/auth/customer_profile_setup_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/bookings/my_bookings_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/profile/settings_screen.dart';
 import 'features/safety/sos_button_widget.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SessionStorage.init();
-  try {
-    await Firebase.initializeApp();
-  } catch (_) {}
   runApp(const LumoCustomerApp());
 }
 
@@ -41,20 +39,35 @@ class _AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<_AuthGate> {
   bool? _isAuthenticated;
+  bool _profileComplete = false;
 
   @override
   void initState() {
     super.initState();
     _isAuthenticated = SessionStorage.isAuthenticated;
+    _profileComplete = SessionStorage.isProfileComplete;
   }
 
   void _onLoginSuccess() {
-    if (mounted) setState(() => _isAuthenticated = true);
+    // After OTP verified — check if profile is already complete
+    if (mounted) {
+      setState(() {
+        _isAuthenticated = true;
+        _profileComplete = SessionStorage.isProfileComplete;
+      });
+    }
+  }
+
+  void _onProfileComplete() {
+    if (mounted) setState(() => _profileComplete = true);
   }
 
   void _onLogout() async {
     await SessionStorage.clearSession();
-    if (mounted) setState(() => _isAuthenticated = false);
+    if (mounted) setState(() {
+      _isAuthenticated = false;
+      _profileComplete = false;
+    });
   }
 
   @override
@@ -67,6 +80,10 @@ class _AuthGateState extends State<_AuthGate> {
     }
     if (!_isAuthenticated!) {
       return AuthScreen(onLoginSuccess: _onLoginSuccess);
+    }
+    // First-time registration — show profile completion
+    if (!_profileComplete) {
+      return CustomerProfileSetupScreen(onCompleted: _onProfileComplete);
     }
     return MainAppShell(onLogout: _onLogout);
   }
@@ -89,6 +106,7 @@ class _MainAppShellState extends State<MainAppShell> {
       const _HomeTab(),
       const MyBookingsScreen(),
       ProfileScreen(onLogout: widget.onLogout),
+      SettingsScreen(onLogout: widget.onLogout),
     ];
 
     return Scaffold(
@@ -117,11 +135,27 @@ class _HomeTab extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         titleSpacing: 16,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            const Text('LUMO', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-            Text(SessionStorage.userPhone, style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.textMuted)),
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.shield_rounded, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('LUMO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                Text(
+                  SessionStorage.userName.isNotEmpty ? 'Hello, ${SessionStorage.userName.split(' ').first}!' : 'Home Services',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -131,6 +165,7 @@ class _HomeTab extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.successGreenSoft,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.successGreen.withAlpha(60)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -172,27 +207,10 @@ class _BottomNav extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            _NavItem(
-              icon: Icons.home_outlined,
-              activeIcon: Icons.home_rounded,
-              label: 'Home',
-              isSelected: currentIndex == 0,
-              onTap: () => onTap(0),
-            ),
-            _NavItem(
-              icon: Icons.calendar_today_outlined,
-              activeIcon: Icons.calendar_today_rounded,
-              label: 'Bookings',
-              isSelected: currentIndex == 1,
-              onTap: () => onTap(1),
-            ),
-            _NavItem(
-              icon: Icons.person_outline_rounded,
-              activeIcon: Icons.person_rounded,
-              label: 'Profile',
-              isSelected: currentIndex == 2,
-              onTap: () => onTap(2),
-            ),
+            _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', isSelected: currentIndex == 0, onTap: () => onTap(0)),
+            _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Bookings', isSelected: currentIndex == 1, onTap: () => onTap(1)),
+            _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profile', isSelected: currentIndex == 2, onTap: () => onTap(2)),
+            _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Settings', isSelected: currentIndex == 3, onTap: () => onTap(3)),
           ],
         ),
       ),
@@ -206,13 +224,7 @@ class _NavItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _NavItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -225,20 +237,9 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected ? AppColors.primary : AppColors.textMuted,
-                size: 24,
-              ),
+              Icon(isSelected ? activeIcon : icon, color: isSelected ? AppColors.primary : AppColors.textMuted, size: 24),
               const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                  color: isSelected ? AppColors.primary : AppColors.textMuted,
-                ),
-              ),
+              Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400, color: isSelected ? AppColors.primary : AppColors.textMuted)),
             ],
           ),
         ),

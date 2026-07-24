@@ -39,6 +39,7 @@ class _BookingScreenState extends State<BookingScreen> {
     try {
       final res = await ApiClient.createBooking(
         serviceId: widget.service['id']?.toString() ?? '',
+        scheduledAt: DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
         addressText: _addressController.text.trim(),
         latitude: 9.9312,
         longitude: 76.2673,
