@@ -213,6 +213,78 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
+  void _showReportModal() {
+    final reasonCtrl = TextEditingController();
+    bool submitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, top: 20, left: 20, right: 20),
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.report_problem_rounded, color: AppColors.emergencyRed, size: 22),
+                  SizedBox(width: 10),
+                  Text('Report Safety or Service Issue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: reasonCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: lumoInputDecoration(hint: 'Describe issue (e.g. Pro late, behavior, damage)'),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          if (reasonCtrl.text.trim().isEmpty) return;
+                          setModalState(() => submitting = true);
+                          try {
+                            await ApiClient.reportBooking(bookingId: widget.bookingId, reason: reasonCtrl.text.trim());
+                            if (!mounted) return;
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('🚨 Report logged & escalated to LUMO Safety Control Center.')),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Report error: ${e.toString()}')),
+                            );
+                          } finally {
+                            setModalState(() => submitting = false);
+                          }
+                        },
+                  child: submitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('SUBMIT SAFETY REPORT', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _fitMapBounds() {
     if (_mapController == null) return;
     double minLat = _proLocation.latitude < _customerLocation.latitude ? _proLocation.latitude : _customerLocation.latitude;
@@ -244,6 +316,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.report_problem_outlined, color: AppColors.emergencyRed),
+            onPressed: _showReportModal,
+            tooltip: 'Report Safety or Service Issue',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
