@@ -128,12 +128,19 @@ class ApiClient {
     throw Exception(body['message'] ?? 'Failed to load categories');
   }
 
-  static Future<List<dynamic>> getServices({String? categoryId}) async {
+  static Future<List<dynamic>> getServices({
+    String? categoryId,
+    double? latitude,
+    double? longitude,
+  }) async {
     final res = await _requestWithFallback((url) {
-      final uri = categoryId != null
-          ? '$url/api/v1/catalog/services?categoryId=$categoryId'
-          : '$url/api/v1/catalog/services';
-      return http.get(Uri.parse(uri), headers: _publicHeaders);
+      final queryParams = <String>[];
+      if (categoryId != null) queryParams.add('categoryId=$categoryId');
+      if (latitude != null) queryParams.add('latitude=$latitude');
+      if (longitude != null) queryParams.add('longitude=$longitude');
+
+      final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+      return http.get(Uri.parse('$url/api/v1/catalog/services$queryString'), headers: _publicHeaders);
     });
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return (body['data'] as List?) ?? [];

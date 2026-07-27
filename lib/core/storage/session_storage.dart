@@ -59,6 +59,20 @@ class SessionStorage {
     await _prefs?.setBool(_keyProfileComplete, true);
   }
 
+  static const _keyAddress = 'user_address';
+  static const _keyLat = 'user_lat';
+  static const _keyLng = 'user_lng';
+
+  static String get activeAddress => _prefs?.getString(_keyAddress) ?? 'Kochi, Kerala, India';
+  static double get activeLat => _prefs?.getDouble(_keyLat) ?? 9.9312;
+  static double get activeLng => _prefs?.getDouble(_keyLng) ?? 76.2673;
+
+  static Future<void> setLocation(String address, double lat, double lng) async {
+    await _prefs?.setString(_keyAddress, address);
+    await _prefs?.setDouble(_keyLat, lat);
+    await _prefs?.setDouble(_keyLng, lng);
+  }
+
   static Future<void> clearSession() async {
     await _prefs?.clear();
   }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../location/location_picker_modal.dart';
 
 class CustomerProfileSetupScreen extends StatefulWidget {
   final VoidCallback onCompleted;
@@ -19,6 +20,9 @@ class _CustomerProfileSetupScreenState extends State<CustomerProfileSetupScreen>
   final _emailCtrl = TextEditingController();
 
   String _selectedSex = 'MALE';
+  String _address = 'Kochi, Kerala, India';
+  double _lat = 9.9312;
+  double _lng = 76.2673;
   bool _isLoading = false;
   String? _error;
 
@@ -74,6 +78,8 @@ class _CustomerProfileSetupScreenState extends State<CustomerProfileSetupScreen>
       sex: _selectedSex,
       email: email.isEmpty ? null : email,
     );
+
+    await SessionStorage.setLocation(_address, _lat, _lng);
 
     if (mounted) widget.onCompleted();
   }
@@ -208,6 +214,42 @@ class _CustomerProfileSetupScreenState extends State<CustomerProfileSetupScreen>
                               ),
                             );
                           }).toList()),
+                          const SizedBox(height: 16),
+                          const Text('DEFAULT HOME SERVICE LOCATION *', style: AppText.label),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => LocationPickerModal(
+                                  initialAddress: _address,
+                                  initialLat: _lat,
+                                  initialLng: _lng,
+                                  onLocationSelected: (addr, lat, lng) {
+                                    setState(() {
+                                      _address = addr;
+                                      _lat = lat;
+                                      _lng = lng;
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(color: const Color(0x0AFFFFFF), borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.primary.withAlpha(80))),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.location_on, color: AppColors.emergencyRed, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text(_address, style: const TextStyle(color: Colors.white, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  const Icon(Icons.edit_location_alt_rounded, color: AppColors.primary, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

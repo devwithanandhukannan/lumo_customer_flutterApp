@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/network/api_client.dart';
+import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
 import '../booking/booking_screen.dart';
+import '../location/location_picker_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,9 +23,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  String _activeAddress = SessionStorage.activeAddress;
+  double _activeLat = SessionStorage.activeLat;
+  double _activeLng = SessionStorage.activeLng;
+
   @override
   void initState() {
     super.initState();
+    _activeAddress = SessionStorage.activeAddress;
+    _activeLat = SessionStorage.activeLat;
+    _activeLng = SessionStorage.activeLng;
     _loadCategories();
     _loadAllServices();
   }
@@ -34,9 +43,34 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _openLocationPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => LocationPickerModal(
+        initialAddress: _activeAddress,
+        initialLat: _activeLat,
+        initialLng: _activeLng,
+        onLocationSelected: (addr, lat, lng) async {
+          await SessionStorage.setLocation(addr, lat, lng);
+          if (mounted) {
+            setState(() {
+              _activeAddress = addr;
+              _activeLat = lat;
+              _activeLng = lng;
+            });
+            _loadAllServices();
+            if (_selectedCategoryId != null) _selectCategory(_selectedCategoryId!);
+          }
+        },
+      ),
+    );
+  }
+
   Future<void> _loadAllServices() async {
     try {
-      final svcs = await ApiClient.getServices();
+      final svcs = await ApiClient.getServices(latitude: _activeLat, longitude: _activeLng);
       if (mounted) setState(() => _allServices = svcs);
     } catch (_) {}
   }
@@ -68,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadingServices = true;
     });
     try {
-      final svcs = await ApiClient.getServices(categoryId: categoryId);
+      final svcs = await ApiClient.getServices(categoryId: categoryId, latitude: 9.9312, longitude: 76.2673);
       if (mounted) setState(() { _services = svcs; _loadingServices = false; });
     } catch (_) {
       if (mounted) setState(() { _services = []; _loadingServices = false; });
@@ -77,9 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<dynamic> get _displayedServices {
     final list = _searchQuery.trim().isNotEmpty ? _allServices : _services;
-    if (_searchQuery.trim().isEmpty) return list;
+    final filteredByLocation = list.where((s) => s['is_available'] == true || (s['available_pros_count'] != null && (s['available_pros_count'] as num) > 0)).toList();
+    final finalList = filteredByLocation.isNotEmpty ? filteredByLocation : list;
+
+    if (_searchQuery.trim().isEmpty) return finalList;
     final q = _searchQuery.toLowerCase();
-    return list.where((s) {
+    return finalList.where((s) {
       final name = (s['name'] ?? '').toString().toLowerCase();
       final desc = (s['description'] ?? '').toString().toLowerCase();
       return name.contains(q) || desc.contains(q);
@@ -87,6 +124,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openBooking(Map<String, dynamic> service) {
+    final isAvailable = service['is_available'] ?? true;
+    final prosCount = (service['available_pros_count'] as num?)?.toInt() ?? 1;
+
+    if (!isAvailable || prosCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ No verified professionals available within 50km radius for this service right now.'),
+          backgroundColor: AppColors.emergencyRed,
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -111,7 +161,57 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-        // Search input
+            // Interactive Location Bar Header
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+              child: GestureDetector(
+                onTap: _openLocationPicker,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withAlpha(60)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, color: AppColors.emergencyRed, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('SERVICE LOCATION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted, letterSpacing: 0.8)),
+                            const SizedBox(height: 2),
+                            Text(
+                              _activeAddress,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                            SizedBox(width: 4),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Search input
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           child: TextField(

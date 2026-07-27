@@ -25,18 +25,46 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _femaleProPreferred = false;
   bool _isBooking = false;
   bool _fetchingLocation = false;
+  bool _checkingAvailability = false;
+  bool _hasAvailablePros = true;
   GoogleMapController? _mapController;
 
   @override
   void initState() {
     super.initState();
     _femaleProPreferred = widget.femaleProPreferred;
+    _checkLocationAvailability();
   }
 
   @override
   void dispose() {
     _addressController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkLocationAvailability() async {
+    setState(() => _checkingAvailability = true);
+    try {
+      final svcs = await ApiClient.getServices(
+        categoryId: widget.service['category_id']?.toString(),
+        latitude: _lat,
+        longitude: _lng,
+      );
+      final currentSvc = svcs.firstWhere(
+        (s) => s['id'] == widget.service['id'],
+        orElse: () => widget.service,
+      );
+      final isAvailable = currentSvc['is_available'] ?? true;
+      final count = (currentSvc['available_pros_count'] as num?)?.toInt() ?? 1;
+      if (mounted) {
+        setState(() {
+          _hasAvailablePros = isAvailable && count > 0;
+          _checkingAvailability = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _checkingAvailability = false);
+    }
   }
 
   void _onMapTapped(LatLng pos) {
@@ -46,6 +74,7 @@ class _BookingScreenState extends State<BookingScreen> {
       _addressController.text = 'Selected Location (${pos.latitude.toStringAsFixed(4)}° N, ${pos.longitude.toStringAsFixed(4)}° E)';
     });
     _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+    _checkLocationAvailability();
   }
 
   Future<void> _useLiveLocation() async {
@@ -60,6 +89,7 @@ class _BookingScreenState extends State<BookingScreen> {
         _fetchingLocation = false;
       });
       _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+      _checkLocationAvailability();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('📍 Live GPS location selected on map')),
       );
@@ -136,11 +166,27 @@ class _BookingScreenState extends State<BookingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.service['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 32)),
+                  Row(
+                    children: [
+                      Text(widget.service['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 32)),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
+                        child: const Text('₹15/km Travel Rate', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
                   Text(name, style: AppText.heading2),
                   const SizedBox(height: 8),
-                  Text('₹$price', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Base Service Fee: ₹$price', style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                      const Text('+ Travel Fee', style: TextStyle(fontSize: 12, color: AppColors.successGreen, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -194,34 +240,44 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            // Verified Pro Preview Card
+            // Verified Pro Preview & Availability Banner
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppColors.cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.successGreen.withAlpha(80)),
+                border: Border.all(
+                  color: _hasAvailablePros ? AppColors.successGreen.withAlpha(80) : AppColors.emergencyRed.withAlpha(120),
+                ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: AppColors.successGreen,
-                    child: Icon(Icons.person, color: Colors.white, size: 22),
+                    backgroundColor: _hasAvailablePros ? AppColors.successGreen : AppColors.emergencyRed,
+                    child: Icon(_hasAvailablePros ? Icons.person : Icons.person_off, color: Colors.white, size: 22),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Text('Verified Pro Match', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14)),
-                            SizedBox(width: 6),
-                            Icon(Icons.verified, color: AppColors.primary, size: 16),
+                            Text(
+                              _hasAvailablePros ? 'Verified Pro Match Available' : 'No Professionals Available',
+                              style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14),
+                            ),
+                            const SizedBox(width: 6),
+                            if (_hasAvailablePros) const Icon(Icons.verified, color: AppColors.primary, size: 16),
                           ],
                         ),
-                        Text('Police Clearance Verified · 50km Dispatch Radius', style: TextStyle(fontSize: 11, color: AppColors.successGreen)),
+                        Text(
+                          _hasAvailablePros
+                              ? 'Police Clearance Verified · DB Approved Coverage Range'
+                              : 'No approved professionals online within range for this location.',
+                          style: TextStyle(fontSize: 11, color: _hasAvailablePros ? AppColors.successGreen : AppColors.emergencyRed),
+                        ),
                       ],
                     ),
                   ),
@@ -245,11 +301,22 @@ class _BookingScreenState extends State<BookingScreen> {
             SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: _isBooking ? null : _confirmBooking,
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.successGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                child: _isBooking
+                onPressed: (_isBooking || !_hasAvailablePros || _checkingAvailability) ? null : _confirmBooking,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _hasAvailablePros ? AppColors.successGreen : Colors.grey.shade800,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: _isBooking || _checkingAvailability
                     ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                    : const Text('CONFIRM BOOKING (5 MIN ACCEPTANCE TIMER)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.8)),
+                    : Text(
+                        _hasAvailablePros ? 'CONFIRM BOOKING (5 MIN ACCEPTANCE TIMER)' : 'UNAVAILABLE IN THIS AREA',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                          color: _hasAvailablePros ? Colors.white : AppColors.textMuted,
+                        ),
+                      ),
               ),
             ),
           ],
