@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../tracking/tracking_screen.dart';
@@ -24,6 +25,7 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _femaleProPreferred = false;
   bool _isBooking = false;
   bool _fetchingLocation = false;
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -37,18 +39,29 @@ class _BookingScreenState extends State<BookingScreen> {
     super.dispose();
   }
 
+  void _onMapTapped(LatLng pos) {
+    setState(() {
+      _lat = pos.latitude;
+      _lng = pos.longitude;
+      _addressController.text = 'Selected Location (${pos.latitude.toStringAsFixed(4)}° N, ${pos.longitude.toStringAsFixed(4)}° E)';
+    });
+    _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+  }
+
   Future<void> _useLiveLocation() async {
     setState(() => _fetchingLocation = true);
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (mounted) {
+      final pos = const LatLng(9.9312, 76.2673);
       setState(() {
-        _lat = 9.9312;
-        _lng = 76.2673;
-        _addressController.text = 'Kochi Live GPS Point (9.9312° N, 76.2673° E)';
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+        _addressController.text = 'Kochi Live GPS Point (${_lat.toStringAsFixed(4)}° N, ${_lng.toStringAsFixed(4)}° E)';
         _fetchingLocation = false;
       });
+      _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('📍 Live GPS location selected successfully')),
+        const SnackBar(content: Text('📍 Live GPS location selected on map')),
       );
     }
   }
@@ -150,6 +163,35 @@ class _BookingScreenState extends State<BookingScreen> {
               controller: _addressController,
               style: const TextStyle(color: AppColors.textPrimary),
               decoration: lumoInputDecoration(hint: 'Search & Enter Service Address', prefix: const Icon(Icons.location_on, color: AppColors.emergencyRed, size: 20)),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 180,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(_lat, _lng),
+                    zoom: 13,
+                  ),
+                  onMapCreated: (ctrl) => _mapController = ctrl,
+                  onTap: _onMapTapped,
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('selected_point'),
+                      position: LatLng(_lat, _lng),
+                      infoWindow: const InfoWindow(title: 'Selected Service Location Point'),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                    ),
+                  },
+                  zoomControlsEnabled: false,
+                  myLocationEnabled: true,
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             // Verified Pro Preview Card

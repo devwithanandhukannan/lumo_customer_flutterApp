@@ -278,4 +278,17 @@ class ApiClient {
       throw Exception(body['message'] ?? 'Failed to log report');
     }
   }
+
+  // Change password
+  static Future<void> changePassword(String oldPassword, String newPassword) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/users/change-password'),
+      headers: _authHeaders,
+      body: jsonEncode({'oldPassword': oldPassword, 'newPassword': newPassword}),
+    ));
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to change password');
+    }
+  }
 }
