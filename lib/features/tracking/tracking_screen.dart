@@ -213,6 +213,20 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
+  void _fitMapBounds() {
+    if (_mapController == null) return;
+    double minLat = _proLocation.latitude < _customerLocation.latitude ? _proLocation.latitude : _customerLocation.latitude;
+    double maxLat = _proLocation.latitude > _customerLocation.latitude ? _proLocation.latitude : _customerLocation.latitude;
+    double minLng = _proLocation.longitude < _customerLocation.longitude ? _proLocation.longitude : _customerLocation.longitude;
+    double maxLng = _proLocation.longitude > _customerLocation.longitude ? _proLocation.longitude : _customerLocation.longitude;
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat - 0.005, minLng - 0.005),
+      northeast: LatLng(maxLat + 0.005, maxLng + 0.005),
+    );
+    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 60));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -383,7 +397,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         target: LatLng(12.9750, 77.6177),
                         zoom: 13,
                       ),
-                      onMapCreated: (ctrl) => _mapController = ctrl,
+                      onMapCreated: (ctrl) {
+                        _mapController = ctrl;
+                        _fitMapBounds();
+                      },
                       markers: _markers,
                       polylines: _polylines,
                       zoomControlsEnabled: false,
