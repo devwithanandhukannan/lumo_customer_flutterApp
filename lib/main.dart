@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/storage/session_storage.dart';
+import 'core/network/api_client.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/customer_profile_setup_screen.dart';
 import 'features/home/home_screen.dart';
@@ -46,6 +47,15 @@ class _AuthGateState extends State<_AuthGate> {
     super.initState();
     _isAuthenticated = SessionStorage.isAuthenticated;
     _profileComplete = SessionStorage.isProfileComplete;
+
+    ApiClient.onUnauthorizedOrNotFound = () {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _profileComplete = false;
+        });
+      }
+    };
   }
 
   void _onLoginSuccess() {
@@ -178,13 +188,9 @@ class _HomeTab extends StatelessWidget {
           ),
         ],
       ),
-      body: const SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(height: 16),
-            HomeScreen(),
-          ],
-        ),
+      body: const Padding(
+        padding: EdgeInsets.only(top: 16),
+        child: HomeScreen(),
       ),
     );
   }

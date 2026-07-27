@@ -108,13 +108,82 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     },
   ];
 
+  Future<void> _reportIssue(String bookingId) async {
+    final controller = TextEditingController();
+    bool reporting = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.report_problem_rounded, color: AppColors.emergencyRed),
+              SizedBox(width: 8),
+              Text('Report Issue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Describe the issue experienced during this service:', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white),
+                decoration: lumoInputDecoration(hint: 'Enter details (e.g. late arrival, incomplete service)'),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed, foregroundColor: Colors.white),
+              onPressed: reporting
+                  ? null
+                  : () async {
+                      if (controller.text.trim().isEmpty) return;
+                      setDialogState(() => reporting = true);
+                      try {
+                        await ApiClient.reportBooking(bookingId: bookingId, reason: controller.text.trim());
+                        if (!mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('⚠️ Report submitted to LUMO Safety Control Center')),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString()}')),
+                        );
+                      } finally {
+                        setDialogState(() => reporting = false);
+                      }
+                    },
+              child: reporting
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Submit Report'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
-        title: const Text('My Bookings'),
+        title: const Text('My Bookings History'),
         actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
       ),
       body: _loading
@@ -123,21 +192,27 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               onRefresh: _load,
               color: AppColors.primary,
               child: _bookings.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 72, height: 72,
-                            decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(22)),
-                            child: const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 32),
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        const SizedBox(height: 120),
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 72, height: 72,
+                                decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(22)),
+                                child: const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 32),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text('No Bookings Yet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                              const SizedBox(height: 6),
+                              const Text('Book a service from the home page', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          const Text('No Bookings Yet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                          const SizedBox(height: 6),
-                          const Text('Book a service from the home page', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                        ],
-                      ),
+                        ),
+                      ],
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
@@ -168,6 +243,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             _cancelBooking(b['id']?.toString() ?? '');
                           }
                         },
+                        onReport: () => _reportIssue(_bookings[i]['id']?.toString() ?? ''),
                       ),
                     ),
             ),
@@ -179,13 +255,15 @@ class _BookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
   final VoidCallback onTap;
   final VoidCallback onCancel;
+  final VoidCallback onReport;
 
-  const _BookingCard({required this.booking, required this.onTap, required this.onCancel});
+  const _BookingCard({required this.booking, required this.onTap, required this.onCancel, required this.onReport});
 
   @override
   Widget build(BuildContext context) {
     final status = (booking['status'] ?? 'REQUESTED').toString().toUpperCase();
-    final pro = booking['professional'] as Map<String, dynamic>?;
+    final proName = booking['pro_name'] ?? booking['professional']?['name'];
+    final proRating = booking['pro_rating'] ?? booking['professional']?['rating'];
 
     Color statusColor;
     IconData statusIcon;
@@ -264,7 +342,7 @@ class _BookingCard extends StatelessWidget {
             ),
 
             // Professional details (if assigned)
-            if (pro != null) ...[
+            if (proName != null) ...[
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 12),
                 padding: const EdgeInsets.all(12),
@@ -285,13 +363,12 @@ class _BookingCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Text(pro['name']?.toString() ?? 'Professional', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 12)),
+                      Text(proName.toString(), style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 12)),
                       const SizedBox(width: 6),
-                      if (pro['verification_status'] == 'APPROVED') const Icon(Icons.verified_rounded, color: AppColors.primary, size: 12),
+                      const Icon(Icons.verified_rounded, color: AppColors.primary, size: 12),
                     ]),
-                    if (pro['rating'] != null) Text('⭐ ${pro['rating']}  ·  ${pro['jobs_completed'] ?? ''} jobs', style: AppText.caption),
+                    if (proRating != null) Text('⭐ $proRating · Verified Professional', style: AppText.caption),
                   ])),
-                  if (pro['phone'] != null) const Icon(Icons.phone_rounded, color: AppColors.primary, size: 16),
                 ]),
               ),
               const SizedBox(height: 8),
@@ -301,31 +378,50 @@ class _BookingCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Row(children: [
-                if (canTrack) Expanded(
-                  child: GestureDetector(
-                    onTap: onTap,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.map_rounded, color: AppColors.primary, size: 16),
-                        SizedBox(width: 6),
-                        Text('Live Track', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
-                      ]),
+                if (canTrack) ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onTap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
+                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.map_rounded, color: AppColors.primary, size: 16),
+                          SizedBox(width: 6),
+                          Text('Live Track', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
                     ),
                   ),
-                ),
-                if (canTrack && canCancel) const SizedBox(width: 10),
-                if (canCancel) Expanded(
+                  const SizedBox(width: 8),
+                ],
+                if (canCancel) ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onCancel,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(color: AppColors.emergencyRedSoft, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.emergencyRedBorder)),
+                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.cancel_outlined, color: AppColors.emergencyRed, size: 16),
+                          SizedBox(width: 6),
+                          Text('Cancel', style: TextStyle(color: AppColors.emergencyRed, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
                   child: GestureDetector(
-                    onTap: onCancel,
+                    onTap: onReport,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(color: AppColors.emergencyRedSoft, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.emergencyRedBorder)),
+                      decoration: BoxDecoration(color: Colors.white.withAlpha(10), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
                       child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.cancel_outlined, color: AppColors.emergencyRed, size: 16),
+                        Icon(Icons.flag_outlined, color: AppColors.textMuted, size: 16),
                         SizedBox(width: 6),
-                        Text('Cancel', style: TextStyle(color: AppColors.emergencyRed, fontSize: 12, fontWeight: FontWeight.w700)),
+                        Text('Report', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w700)),
                       ]),
                     ),
                   ),

@@ -1,10 +1,26 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../storage/session_storage.dart';
 
 class ApiClient {
+  static void Function()? onUnauthorizedOrNotFound;
+
+  static void _checkResponseForUserError(http.Response res) {
+    if (res.statusCode == 401 || res.statusCode == 404) {
+      SessionStorage.clearSession();
+      onUnauthorizedOrNotFound?.call();
+    }
+  }
+
   static String _defaultBaseUrl() {
-    return 'http://192.168.1.2:8000';
+    if (kIsWeb) return 'http://localhost:8000';
+    try {
+      if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+      if (Platform.isIOS) return 'http://127.0.0.1:8000';
+    } catch (_) {}
+    return 'http://192.168.1.8:8000';
   }
 
   static String baseUrl = _defaultBaseUrl();
@@ -26,18 +42,17 @@ class ApiClient {
   ) async {
     final candidateUrls = <String>{
       baseUrl,
-      'http://192.168.1.2:8000',
-      'http://10.0.2.2:8000',
+      if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:8000',
+      'http://192.168.1.8:8000',
       'http://127.0.0.1:8000',
       'http://localhost:8000',
-      'http://192.168.1.8:8000',
     }.toList();
 
     Object? lastError;
 
     for (final candidate in candidateUrls) {
       try {
-        final response = await requestFn(candidate).timeout(const Duration(seconds: 3));
+        final response = await requestFn(candidate).timeout(const Duration(milliseconds: 1000));
         baseUrl = candidate;
         return response;
       } catch (e) {
@@ -183,6 +198,7 @@ class ApiClient {
       Uri.parse('$url/api/v1/users/me'),
       headers: _authHeaders,
     ));
+    _checkResponseForUserError(res);
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return body['data'] ?? body;
     throw Exception(body['message'] ?? 'Failed to load user profile');
@@ -230,16 +246,36 @@ class ApiClient {
     return null;
   }
 
-  // Change password
-  static Future<void> changePassword(String oldPassword, String newPassword) async {
+  // Submit Rating & Review
+  static Future<void> submitReview({
+    required String bookingId,
+    required int rating,
+    String? comment,
+  }) async {
     final res = await _requestWithFallback((url) => http.post(
-      Uri.parse('$url/api/v1/users/change-password'),
+      Uri.parse('$url/api/v1/bookings/$bookingId/review'),
       headers: _authHeaders,
-      body: jsonEncode({'oldPassword': oldPassword, 'newPassword': newPassword}),
+      body: jsonEncode({'rating': rating, 'comment': comment}),
     ));
-    if (res.statusCode != 200) {
+    if (res.statusCode != 200 && res.statusCode != 201) {
       final body = jsonDecode(res.body);
-      throw Exception(body['message'] ?? 'Failed to change password');
+      throw Exception(body['message'] ?? 'Failed to submit review');
+    }
+  }
+
+  // Report booking issue
+  static Future<void> reportBooking({
+    required String bookingId,
+    required String reason,
+  }) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/bookings/$bookingId/report'),
+      headers: _authHeaders,
+      body: jsonEncode({'reason': reason}),
+    ));
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['message'] ?? 'Failed to log report');
     }
   }
 }
