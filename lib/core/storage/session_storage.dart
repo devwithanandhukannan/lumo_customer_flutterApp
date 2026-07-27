@@ -35,6 +35,7 @@ class SessionStorage {
     String? email,
     int? age,
     String? sex,
+    bool isProfileComplete = false,
   }) async {
     await _prefs?.setBool(_keyAuthenticated, true);
     await _prefs?.setString(_keyToken, token);
@@ -44,6 +45,11 @@ class SessionStorage {
     if (email != null) await _prefs?.setString(_keyEmail, email);
     if (age != null) await _prefs?.setInt(_keyAge, age);
     if (sex != null) await _prefs?.setString(_keySex, sex);
+
+    final bool complete = isProfileComplete || (name.isNotEmpty && name != 'Customer' && name != 'New User');
+    if (complete) {
+      await _prefs?.setBool(_keyProfileComplete, true);
+    }
   }
 
   static Future<void> completeProfile({

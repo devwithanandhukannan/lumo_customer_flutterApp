@@ -126,13 +126,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       final data = res['data'] ?? res;
       final token = data['tokens']?['accessToken'] ?? data['accessToken'] ?? '';
       final user = data['user'] ?? {};
+      final isReg = (data['isRegistered'] as bool?) ?? false;
+      final userName = (user['fullName'] ?? user['full_name'] ?? 'Customer').toString();
 
       await SessionStorage.setSession(
         token: token,
-        phone: user['phoneNumber']?.toString() ?? phone,
-        name: user['fullName']?.toString() ?? 'Customer',
+        phone: (user['phoneNumber'] ?? user['phone_number'] ?? phone).toString(),
+        name: userName,
         userId: user['id']?.toString(),
         email: user['email']?.toString(),
+        isProfileComplete: isReg || (userName.isNotEmpty && userName != 'Customer' && userName != 'New User'),
       );
 
       if (mounted) widget.onLoginSuccess();
