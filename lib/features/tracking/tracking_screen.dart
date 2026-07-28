@@ -586,14 +586,44 @@ class _TrackingScreenState extends State<TrackingScreen> {
             ),
             if (widget.status.toUpperCase() == 'COMPLETED') ...[
               const SizedBox(height: 16),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.warningAmber, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  icon: const Icon(Icons.star_rate, color: Colors.white),
-                  label: const Text('ADD RATING & REVIEW FOR SERVICE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white)),
-                  onPressed: _showRatingModal,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.warningAmber,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.star_rate, color: Colors.white),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('RATE SERVICE (★)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white)),
+                        ),
+                        onPressed: _showRatingModal,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.emergencyRed,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.report_problem_outlined, color: Colors.white),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('REPORT ISSUE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white)),
+                        ),
+                        onPressed: _showReportModal,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
