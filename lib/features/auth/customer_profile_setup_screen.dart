@@ -67,7 +67,15 @@ class _CustomerProfileSetupScreenState extends State<CustomerProfileSetupScreen>
 
     try {
       // Call backend to store profile in PostgreSQL database
-      await ApiClient.completeProfile(name: name, age: age, sex: _selectedSex, email: email.isEmpty ? null : email);
+      await ApiClient.completeProfile(
+        name: name,
+        age: age,
+        sex: _selectedSex,
+        email: email.isEmpty ? null : email,
+        addressText: _address,
+        latitude: _lat,
+        longitude: _lng,
+      );
     } catch (e) {
       if (mounted) {
         setState(() {

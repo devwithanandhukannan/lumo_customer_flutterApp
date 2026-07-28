@@ -69,9 +69,9 @@ class SessionStorage {
   static const _keyLat = 'user_lat';
   static const _keyLng = 'user_lng';
 
-  static String get activeAddress => _prefs?.getString(_keyAddress) ?? 'Kochi, Kerala, India';
-  static double get activeLat => _prefs?.getDouble(_keyLat) ?? 9.9312;
-  static double get activeLng => _prefs?.getDouble(_keyLng) ?? 76.2673;
+  static String get activeAddress => _prefs?.getString(_keyAddress) ?? 'Thottikkanam, Kerala, India';
+  static double get activeLat => _prefs?.getDouble(_keyLat) ?? 9.9484;
+  static double get activeLng => _prefs?.getDouble(_keyLng) ?? 77.1931;
 
   static Future<void> setLocation(String address, double lat, double lng) async {
     await _prefs?.setString(_keyAddress, address);

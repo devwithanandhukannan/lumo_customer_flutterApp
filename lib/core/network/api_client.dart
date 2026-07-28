@@ -267,17 +267,29 @@ class ApiClient {
     throw Exception(body['message'] ?? 'Failed to load user profile');
   }
 
-  // Complete customer profile after OTP (name, age, sex, email)
+  // Complete customer profile after OTP (name, age, sex, email, location)
   static Future<Map<String, dynamic>> completeProfile({
     required String name,
     required int age,
     required String sex,
     String? email,
+    String? addressText,
+    double? latitude,
+    double? longitude,
   }) async {
     final res = await _requestWithFallback((url) => http.post(
       Uri.parse('$url/api/v1/auth/customer/complete-profile'),
       headers: _authHeaders,
-      body: jsonEncode({'fullName': name, 'age': age, 'sex': sex, 'email': email}),
+      body: jsonEncode({
+        'fullName': name,
+        'age': age,
+        'sex': sex,
+        'email': email,
+        'addressText': addressText,
+        'serviceArea': addressText,
+        'latitude': latitude,
+        'longitude': longitude,
+      }),
     ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200) return body['data'] ?? body;

@@ -20,9 +20,9 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  final _addressController = TextEditingController(text: '');
-  double _lat = 9.9312;
-  double _lng = 76.2673;
+  late final TextEditingController _addressController = TextEditingController(text: SessionStorage.activeAddress);
+  late double _lat = SessionStorage.activeLat;
+  late double _lng = SessionStorage.activeLng;
   bool _femaleProPreferred = false;
   bool _isBooking = false;
   bool _fetchingLocation = false;
