@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../../core/network/api_client.dart';
+import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
 
 class TrackingScreen extends StatefulWidget {
@@ -37,17 +38,56 @@ class _TrackingScreenState extends State<TrackingScreen> {
   final TextEditingController _reviewController = TextEditingController();
   bool _submittingReview = false;
 
-  static const LatLng _proLocation = LatLng(12.9716, 77.5946);
-  static const LatLng _customerLocation = LatLng(12.9783, 77.6408);
+  String _proName = 'Assigned Professional';
+  String _proRating = '5.0';
+  LatLng _proLocation = LatLng(SessionStorage.activeLat - 0.003, SessionStorage.activeLng - 0.003);
+  LatLng _customerLocation = LatLng(SessionStorage.activeLat, SessionStorage.activeLng);
 
-  List<LatLng> _roadPoints = [_proLocation, _customerLocation];
+  late List<LatLng> _roadPoints = [_proLocation, _customerLocation];
 
   @override
   void initState() {
     super.initState();
-    _fetchRoadPolyline();
+    _loadBookingTelemetry();
     if (widget.status.toUpperCase() == 'REQUESTED') {
       _startCountdown();
+    }
+  }
+
+  Future<void> _loadBookingTelemetry() async {
+    try {
+      final data = await ApiClient.getBookingDetails(widget.bookingId);
+      if (data.isNotEmpty) {
+        final pName = (data['pro_name'] ?? data['proName'] ?? 'Assigned Professional').toString();
+        final pRating = (data['pro_rating'] ?? data['rating_avg'] ?? '5.0').toString();
+
+        double? proLat = double.tryParse(data['pro_lat']?.toString() ?? '') ?? double.tryParse(data['proLat']?.toString() ?? '');
+        double? proLng = double.tryParse(data['pro_lng']?.toString() ?? '') ?? double.tryParse(data['proLng']?.toString() ?? '');
+
+        double? custLat = double.tryParse(data['latitude']?.toString() ?? '') ?? double.tryParse(data['customer_lat']?.toString() ?? '');
+        double? custLng = double.tryParse(data['longitude']?.toString() ?? '') ?? double.tryParse(data['customer_lng']?.toString() ?? '');
+
+        final finalCustLat = custLat ?? SessionStorage.activeLat;
+        final finalCustLng = custLng ?? SessionStorage.activeLng;
+        final finalProLat = proLat ?? (finalCustLat - 0.003);
+        final finalProLng = proLng ?? (finalCustLng - 0.003);
+
+        if (mounted) {
+          setState(() {
+            _proName = pName;
+            _proRating = pRating;
+            _proLocation = LatLng(finalProLat, finalProLng);
+            _customerLocation = LatLng(finalCustLat, finalCustLng);
+            _roadPoints = [_proLocation, _customerLocation];
+          });
+          _fetchRoadPolyline();
+          _fitMapBounds();
+        }
+      } else {
+        _fetchRoadPolyline();
+      }
+    } catch (_) {
+      _fetchRoadPolyline();
     }
   }
 
@@ -106,13 +146,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
         Marker(
           markerId: const MarkerId('pro_marker'),
           position: _proLocation,
-          infoWindow: const InfoWindow(title: 'Assigned Professional (Priya Sharma)', snippet: 'Police Verified · En Route'),
+          infoWindow: InfoWindow(title: 'Assigned Professional ($_proName)', snippet: 'Police Verified · En Route'),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         ),
         Marker(
           markerId: const MarkerId('customer_marker'),
           position: _customerLocation,
-          infoWindow: const InfoWindow(title: 'Your Service Address', snippet: 'Kochi / Bangalore'),
+          infoWindow: const InfoWindow(title: 'Your Service Address', snippet: 'Service Destination'),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         ),
       };
@@ -391,17 +431,17 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         child: Icon(Icons.person, color: Colors.white, size: 22),
                       ),
                       const SizedBox(width: 12),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Text('Priya Sharma', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
-                              SizedBox(width: 4),
-                              Icon(Icons.verified, color: AppColors.primary, size: 16),
+                              Text(_proName, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.verified, color: AppColors.primary, size: 16),
                             ],
                           ),
-                          Text('Police Clear Badge · ★ 4.9 · Verified Pro', style: TextStyle(fontSize: 11, color: AppColors.successGreen)),
+                          Text('Police Clear Badge · ★ $_proRating · Verified Pro', style: const TextStyle(fontSize: 11, color: AppColors.successGreen)),
                         ],
                       ),
                       const Spacer(),
@@ -501,9 +541,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 child: Stack(
                   children: [
                     GoogleMap(
-                      initialCameraPosition: const CameraPosition(
-                        target: LatLng(12.9750, 77.6177),
-                        zoom: 13,
+                      initialCameraPosition: CameraPosition(
+                        target: _customerLocation,
+                        zoom: 14,
                       ),
                       onMapCreated: (ctrl) {
                         _mapController = ctrl;

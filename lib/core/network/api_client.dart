@@ -217,8 +217,8 @@ class ApiClient {
         'serviceId': serviceId,
         'scheduledAt': scheduledAt,
         'addressText': addressText,
-        'latitude': latitude ?? 12.9716,
-        'longitude': longitude ?? 77.5946,
+        'latitude': latitude ?? SessionStorage.activeLat,
+        'longitude': longitude ?? SessionStorage.activeLng,
         'femaleProPreferred': femaleProPreferred,
         if (selectedProId != null) 'selectedProId': selectedProId,
       }),
@@ -226,6 +226,16 @@ class ApiClient {
     final body = jsonDecode(res.body);
     if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
     throw Exception(body['message'] ?? 'Failed to create booking');
+  }
+
+  static Future<Map<String, dynamic>> getBookingDetails(String bookingId) async {
+    final res = await _requestWithFallback((url) => http.get(
+      Uri.parse('$url/api/v1/bookings/$bookingId'),
+      headers: _authHeaders,
+    ));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200) return (body['data'] as Map<String, dynamic>?) ?? {};
+    throw Exception(body['message'] ?? 'Failed to load booking details');
   }
 
   static Future<List<dynamic>> getMyBookings() async {
