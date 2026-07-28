@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadingServices = true;
     });
     try {
-      final svcs = await ApiClient.getServices(categoryId: categoryId, latitude: 9.9312, longitude: 76.2673);
+      final svcs = await ApiClient.getServices(categoryId: categoryId, latitude: _activeLat, longitude: _activeLng);
       if (mounted) setState(() { _services = svcs; _loadingServices = false; });
     } catch (_) {
       if (mounted) setState(() { _services = []; _loadingServices = false; });

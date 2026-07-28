@@ -20,9 +20,9 @@ class _CustomerProfileSetupScreenState extends State<CustomerProfileSetupScreen>
   final _emailCtrl = TextEditingController();
 
   String _selectedSex = 'MALE';
-  String _address = 'Kochi, Kerala, India';
-  double _lat = 9.9312;
-  double _lng = 76.2673;
+  String _address = 'Thottikkanam, Kerala, India';
+  double _lat = 9.9484;
+  double _lng = 77.1931;
   bool _isLoading = false;
   String? _error;
 

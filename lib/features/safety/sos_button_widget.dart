@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/network/api_client.dart';
+import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
 
 class SosButtonWidget extends StatefulWidget {
@@ -62,7 +63,7 @@ class _SosButtonWidgetState extends State<SosButtonWidget> with SingleTickerProv
 
   Future<void> _triggerSos() async {
     try {
-      await ApiClient.triggerSos(latitude: 9.9322, longitude: 76.2685, bookingId: widget.bookingId, notes: '1-Tap Customer Mobile SOS');
+      await ApiClient.triggerSos(latitude: SessionStorage.activeLat, longitude: SessionStorage.activeLng, bookingId: widget.bookingId, notes: '1-Tap Customer Mobile SOS');
     } catch (_) {}
 
     if (mounted) {
