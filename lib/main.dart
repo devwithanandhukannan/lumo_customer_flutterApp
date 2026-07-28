@@ -45,9 +45,6 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   void initState() {
     super.initState();
-    _isAuthenticated = SessionStorage.isAuthenticated;
-    _profileComplete = SessionStorage.isProfileComplete;
-
     ApiClient.onUnauthorizedOrNotFound = () {
       if (mounted) {
         setState(() {
@@ -56,6 +53,48 @@ class _AuthGateState extends State<_AuthGate> {
         });
       }
     };
+    _verifyUserExists();
+  }
+
+  Future<void> _verifyUserExists() async {
+    if (!SessionStorage.isAuthenticated) {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _profileComplete = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final user = await ApiClient.getMe();
+      if (user == null || user['id'] == null || user['isActive'] == false) {
+        // User does not exist in database or is disabled — purge local storage completely!
+        await SessionStorage.clearSession();
+        if (mounted) {
+          setState(() {
+            _isAuthenticated = false;
+            _profileComplete = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isAuthenticated = true;
+            _profileComplete = SessionStorage.isProfileComplete;
+          });
+        }
+      }
+    } catch (_) {
+      await SessionStorage.clearSession();
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+          _profileComplete = false;
+        });
+      }
+    }
   }
 
   void _onLoginSuccess() {

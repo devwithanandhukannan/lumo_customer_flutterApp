@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> _allServices = [];
   bool _loadingCategories = false;
   bool _loadingServices = false;
-  bool _femaleProPreferred = true;
+  bool _femaleProPreferred = false; // Update 4: Computed from customer gender in initState
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -35,6 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _activeLng = SessionStorage.activeLng;
     _loadCategories();
     _loadAllServices();
+    // Update 4: Auto-enable female protection for female customers
+    // Update 4: Auto-enable female protection for female customers
+    final customerSex = SessionStorage.sex.toUpperCase();
+    _femaleProPreferred = (customerSex == 'FEMALE');
   }
 
   @override

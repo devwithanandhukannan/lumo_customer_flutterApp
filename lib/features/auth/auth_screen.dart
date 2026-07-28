@@ -85,6 +85,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return '${_selectedRegion.dialCode}$digits';
   }
 
+  // Update 2: Track if user already existed before OTP verify
+  bool _phoneAlreadyRegistered = false;
+
   Future<void> _sendBackendOtp() async {
     final digits = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty || (digits.length < 7 && _selectedRegion.code != 'IN') || (digits.length < 10 && _selectedRegion.code == 'IN')) {
@@ -94,14 +97,27 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     setState(() { _isSendingOtp = true; _errorMessage = null; _infoMessage = null; });
     try {
       final phone = _normalizedPhone;
+
+      // Update 2: Pre-flight phone check — detect returning users
+      try {
+        final checkRes = await ApiClient.checkPhoneExists(phone);
+        final checkData = (checkRes['data'] ?? checkRes) as Map<String, dynamic>;
+        _phoneAlreadyRegistered = checkData['exists'] == true;
+        if (_phoneAlreadyRegistered && mounted) {
+          setState(() => _infoMessage = 'Welcome back! Enter OTP to sign in.');
+        }
+      } catch (_) {
+        _phoneAlreadyRegistered = false;
+      }
+
       final res = await ApiClient.sendOtp(phone);
       if (mounted) {
         setState(() {
           _otpSent = true;
           final debugOtp = res['debugOtp']?.toString();
           _infoMessage = debugOtp != null
-              ? '🔐 Dev Mode: OTP sent to backend terminal. Copy from logs and paste below.'
-              : 'OTP sent to $phone.';
+              ? 'Dev OTP: $debugOtp'
+              : _phoneAlreadyRegistered ? 'OTP sent. Welcome back!' : 'OTP sent to $phone.';
         });
         FocusScope.of(context).requestFocus(_otpFocus);
       }
@@ -129,13 +145,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       final isReg = (data['isRegistered'] as bool?) ?? false;
       final userName = (user['fullName'] ?? user['full_name'] ?? 'Customer').toString();
 
+      // Update 2 (B3 fix): Use explicit isRegistered from API + pre-flight check
+      final bool profileComplete = isReg && _phoneAlreadyRegistered;
+
       await SessionStorage.setSession(
         token: token,
         phone: (user['phoneNumber'] ?? user['phone_number'] ?? phone).toString(),
         name: userName,
         userId: user['id']?.toString(),
         email: user['email']?.toString(),
-        isProfileComplete: isReg || (userName.isNotEmpty && userName != 'Customer' && userName != 'New User'),
+        isProfileComplete: profileComplete,
       );
 
       if (mounted) widget.onLoginSuccess();

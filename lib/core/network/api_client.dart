@@ -17,8 +17,8 @@ class ApiClient {
   static String _defaultBaseUrl() {
     if (kIsWeb) return 'http://localhost:8000';
     try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:8000';
-      if (Platform.isIOS) return 'http://127.0.0.1:8000';
+      if (Platform.isAndroid) return 'http://192.168.1.8:8000';
+      if (Platform.isIOS) return 'http://192.168.1.8:8000';
     } catch (_) {}
     return 'http://192.168.1.8:8000';
   }
@@ -42,8 +42,9 @@ class ApiClient {
   ) async {
     final candidateUrls = <String>{
       baseUrl,
-      if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:8000',
       'http://192.168.1.8:8000',
+      if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:8000',
+      if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:5000',
       'http://127.0.0.1:8000',
       'http://localhost:8000',
     }.toList();
@@ -52,8 +53,9 @@ class ApiClient {
 
     for (final candidate in candidateUrls) {
       try {
-        final response = await requestFn(candidate).timeout(const Duration(milliseconds: 1000));
+        final response = await requestFn(candidate).timeout(const Duration(seconds: 2));
         baseUrl = candidate;
+        _checkResponseForUserError(response);
         return response;
       } catch (e) {
         lastError = e;
@@ -65,13 +67,46 @@ class ApiClient {
           lastError.toString().contains('No route to host') ||
           lastError.toString().contains('TimeoutException')) {
         throw Exception(
-          'Backend API Gateway unreachable at $baseUrl. Ensure ./run-all.sh is running in backend directory and phone is on same Wi-Fi network.',
+          'Backend API Gateway unreachable at $baseUrl. Ensure ./run-all.sh is running in backend directory and your phone is on the same Wi-Fi network.',
         );
       }
       throw lastError;
     }
 
     throw Exception('Connection failed');
+  }
+
+  /// Verify current authenticated user profile exists in database
+  static Future<Map<String, dynamic>?> getMe() async {
+    try {
+      final res = await _requestWithFallback((url) => http.get(
+            Uri.parse('$url/api/v1/users/me'),
+            headers: _authHeaders,
+          ));
+      _checkResponseForUserError(res);
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        return (body['data'] as Map<String, dynamic>?) ?? (body['user'] as Map<String, dynamic>?);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Update 2: Pre-flight phone check — detect existing customers
+  static Future<Map<String, dynamic>> checkPhoneExists(String phoneNumber) async {
+    try {
+      final res = await _requestWithFallback((url) => http.get(
+            Uri.parse('$url/api/v1/auth/check-phone?phone=${Uri.encodeComponent(phoneNumber)}'),
+            headers: _publicHeaders,
+          ));
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 200) return body;
+      return {'data': {'exists': false, 'role': null}};
+    } catch (_) {
+      return {'data': {'exists': false, 'role': null}};
+    }
   }
 
   static Future<Map<String, dynamic>> sendOtp(String phoneNumber) async {
@@ -147,6 +182,25 @@ class ApiClient {
     throw Exception(body['message'] ?? 'Failed to load services');
   }
 
+  // Update 3: Get professionals available for a service
+  static Future<List<Map<String, dynamic>>> getProsForService({
+    required String serviceId,
+    required double lat,
+    required double lng,
+    bool femaleOnly = false,
+    String sortBy = 'distance',
+  }) async {
+    final res = await _requestWithFallback((url) => http.get(
+          Uri.parse('$url/api/v1/catalog/services/$serviceId/professionals?lat=$lat&lng=$lng&femaleOnly=$femaleOnly&sortBy=$sortBy'),
+          headers: _publicHeaders,
+        ));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return ((body['data'] as List?) ?? []).map((p) => Map<String, dynamic>.from(p)).toList();
+    }
+    return [];
+  }
+
   static Future<Map<String, dynamic>> createBooking({
     required String serviceId,
     required String scheduledAt,
@@ -154,6 +208,7 @@ class ApiClient {
     double? latitude,
     double? longitude,
     bool femaleProPreferred = false,
+    String? selectedProId,
   }) async {
     final res = await _requestWithFallback((url) => http.post(
       Uri.parse('$url/api/v1/bookings'),
@@ -165,6 +220,7 @@ class ApiClient {
         'latitude': latitude ?? 12.9716,
         'longitude': longitude ?? 77.5946,
         'femaleProPreferred': femaleProPreferred,
+        if (selectedProId != null) 'selectedProId': selectedProId,
       }),
     ));
     final body = jsonDecode(res.body);

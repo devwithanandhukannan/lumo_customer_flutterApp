@@ -66,10 +66,16 @@ class _CustomerProfileSetupScreenState extends State<CustomerProfileSetupScreen>
     setState(() { _isLoading = true; _error = null; });
 
     try {
-      // Call backend to store profile
+      // Call backend to store profile in PostgreSQL database
       await ApiClient.completeProfile(name: name, age: age, sex: _selectedSex, email: email.isEmpty ? null : email);
-    } catch (_) {
-      // Store locally even if backend call fails
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+      return;
     }
 
     await SessionStorage.completeProfile(
