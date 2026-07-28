@@ -209,6 +209,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 20),
+                        onPressed: () async {
+                          await _loadCategories();
+                          await _loadAllServices();
+                          if (_selectedCategoryId != null) await _selectCategory(_selectedCategoryId!);
+                        },
+                        tooltip: 'Refresh Services',
+                      ),
                     ],
                   ),
                 ),

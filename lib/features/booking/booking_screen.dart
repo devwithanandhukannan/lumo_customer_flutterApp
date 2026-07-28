@@ -227,9 +227,20 @@ class _BookingScreenState extends State<BookingScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadProsForLocation,
+            tooltip: 'Refresh Professionals & Pricing',
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: RefreshIndicator(
+        onRefresh: _loadProsForLocation,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -395,8 +406,9 @@ class _BookingScreenState extends State<BookingScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Update 3: Professional picker section
   Widget _buildProPicker() {

@@ -358,14 +358,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadBookingTelemetry,
+            tooltip: 'Refresh Booking Telemetry',
+          ),
+          IconButton(
             icon: const Icon(Icons.report_problem_outlined, color: AppColors.emergencyRed),
             onPressed: _showReportModal,
             tooltip: 'Report Safety or Service Issue',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: RefreshIndicator(
+        onRefresh: _loadBookingTelemetry,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -590,6 +599,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

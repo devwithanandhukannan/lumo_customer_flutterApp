@@ -67,6 +67,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.surface,
         title: const Text('My Profile'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadProfile,
+            tooltip: 'Refresh Profile',
+          ),
           TextButton.icon(
             onPressed: _confirmLogout,
             icon: const Icon(Icons.logout_rounded, color: AppColors.emergencyRed, size: 18),
