@@ -121,6 +121,46 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
   }
 
+  Future<void> _handleCancelBooking() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: const Text('Cancel Request', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to cancel this booking request?', style: TextStyle(color: AppColors.textMuted)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep Booking', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancel Request', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiClient.cancelBooking(widget.bookingId, reason: 'Cancelled by Customer');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Booking request cancelled successfully'), backgroundColor: AppColors.emergencyRed),
+        );
+        _telemetryPollTimer?.cancel();
+        _countdownTimer?.cancel();
+        Navigator.pop(context);
+      } catch (err) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to cancel: $err'), backgroundColor: AppColors.emergencyRed),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _telemetryPollTimer?.cancel();
@@ -615,6 +655,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 ),
               ),
             ),
+            if (_currentStatus.toUpperCase() == 'REQUESTED' || _currentStatus.toUpperCase() == 'ACCEPTED') ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.emergencyRed,
+                    side: const BorderSide(color: AppColors.emergencyRed, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.cancel_outlined, color: AppColors.emergencyRed),
+                  label: const Text('CANCEL REQUEST', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
+                  onPressed: _handleCancelBooking,
+                ),
+              ),
+            ],
             if (_currentStatus.toUpperCase() == 'COMPLETED') ...[
               const SizedBox(height: 16),
               Row(

@@ -307,10 +307,11 @@ class ApiClient {
   }
 
   // Cancel an active booking
-  static Future<void> cancelBooking(String bookingId) async {
+  static Future<void> cancelBooking(String bookingId, {String? reason}) async {
     final res = await _requestWithFallback((url) => http.post(
       Uri.parse('$url/api/v1/bookings/$bookingId/cancel'),
       headers: _authHeaders,
+      body: jsonEncode({'reason': reason}),
     ));
     if (res.statusCode != 200) {
       final body = jsonDecode(res.body);
