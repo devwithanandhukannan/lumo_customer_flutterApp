@@ -38,6 +38,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
   final TextEditingController _reviewController = TextEditingController();
   bool _submittingReview = false;
 
+  late String _currentStatus;
+  late String _startOtp;
+  late String _endOtp;
+  Timer? _telemetryPollTimer;
+
   String _proName = 'Assigned Professional';
   String _proRating = '5.0';
   LatLng _proLocation = LatLng(SessionStorage.activeLat - 0.003, SessionStorage.activeLng - 0.003);
@@ -48,16 +53,33 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   void initState() {
     super.initState();
+    _currentStatus = widget.status;
+    _startOtp = widget.startOtp;
+    _endOtp = widget.endOtp;
     _loadBookingTelemetry();
-    if (widget.status.toUpperCase() == 'REQUESTED') {
+    if (_currentStatus.toUpperCase() == 'REQUESTED') {
       _startCountdown();
     }
+    _startTelemetryPolling();
+  }
+
+  void _startTelemetryPolling() {
+    _telemetryPollTimer?.cancel();
+    _telemetryPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        _loadBookingTelemetry();
+      }
+    });
   }
 
   Future<void> _loadBookingTelemetry() async {
     try {
       final data = await ApiClient.getBookingDetails(widget.bookingId);
       if (data.isNotEmpty) {
+        final newStatus = (data['status'] ?? _currentStatus).toString();
+        final sOtp = (data['start_otp'] ?? _startOtp).toString();
+        final eOtp = (data['end_otp'] ?? _endOtp).toString();
+
         final pName = (data['pro_name'] ?? data['proName'] ?? 'Assigned Professional').toString();
         final pRating = (data['pro_rating'] ?? data['rating_avg'] ?? '5.0').toString();
 
@@ -74,12 +96,20 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
         if (mounted) {
           setState(() {
+            _currentStatus = newStatus;
+            _startOtp = sOtp;
+            _endOtp = eOtp;
             _proName = pName;
             _proRating = pRating;
             _proLocation = LatLng(finalProLat, finalProLng);
             _customerLocation = LatLng(finalCustLat, finalCustLng);
             _roadPoints = [_proLocation, _customerLocation];
           });
+
+          if (_currentStatus.toUpperCase() != 'REQUESTED') {
+            _countdownTimer?.cancel();
+          }
+
           _fetchRoadPolyline();
           _fitMapBounds();
         }
@@ -93,6 +123,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   @override
   void dispose() {
+    _telemetryPollTimer?.cancel();
     _countdownTimer?.cancel();
     _reviewController.dispose();
     super.dispose();
@@ -167,7 +198,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       };
 
   Color get _statusColor {
-    switch (widget.status.toUpperCase()) {
+    switch (_currentStatus.toUpperCase()) {
       case 'REQUESTED': return AppColors.warningAmber;
       case 'ACCEPTED': return AppColors.primary;
       case 'NAVIGATING': return AppColors.primary;
@@ -378,7 +409,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.status.toUpperCase() == 'REQUESTED') ...[
+            if (_currentStatus.toUpperCase() == 'REQUESTED') ...[
               Container(
                 padding: const EdgeInsets.all(14),
                 margin: const EdgeInsets.only(bottom: 14),
@@ -424,7 +455,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           color: _statusColor.withAlpha(26),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(widget.status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _statusColor)),
+                        child: Text(_currentStatus.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _statusColor)),
                       ),
                       Text('₹${widget.totalAmount}', style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 16)),
                     ],
@@ -454,7 +485,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         ],
                       ),
                       const Spacer(),
-                      if (widget.status.toUpperCase() == 'COMPLETED')
+                      if (_currentStatus.toUpperCase() == 'COMPLETED')
                         IconButton(
                           icon: const Icon(Icons.star, color: AppColors.warningAmber, size: 28),
                           onPressed: _showRatingModal,
@@ -509,7 +540,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                       children: [
                         const Text('START JOB OTP', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 0.8)),
                         const SizedBox(height: 6),
-                        Text(widget.startOtp, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 6, color: AppColors.primary)),
+                        Text(_startOtp, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 6, color: AppColors.primary)),
                         const SizedBox(height: 4),
                         const Text('Share when pro arrives', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                       ],
@@ -529,7 +560,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                       children: [
                         const Text('END JOB OTP', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 0.8)),
                         const SizedBox(height: 6),
-                        Text(widget.endOtp, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 6, color: AppColors.successGreen)),
+                        Text(_endOtp, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 6, color: AppColors.successGreen)),
                         const SizedBox(height: 4),
                         const Text('Share after job done', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                       ],
@@ -584,7 +615,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 ),
               ),
             ),
-            if (widget.status.toUpperCase() == 'COMPLETED') ...[
+            if (_currentStatus.toUpperCase() == 'COMPLETED') ...[
               const SizedBox(height: 16),
               Row(
                 children: [
