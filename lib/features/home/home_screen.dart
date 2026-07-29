@@ -363,26 +363,116 @@ class _HomeScreenState extends State<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.1,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 0.76,
               ),
               itemCount: _displayedServices.length,
               itemBuilder: (_, i) {
                 final svc = _displayedServices[i];
+                final rawImg = svc['image_url']?.toString();
+                final imgUrl = (rawImg != null && rawImg.isNotEmpty)
+                    ? (rawImg.startsWith('http') ? rawImg : '${ApiClient.baseUrl}$rawImg')
+                    : null;
+                final duration = svc['duration_minutes']?.toString() ?? '60';
+
                 return GestureDetector(
                   onTap: () => _openBooking(svc),
                   child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: AppColors.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(svc['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 24)),
-                        const Spacer(),
-                        Text(svc['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 6),
-                        Text('₹${svc['base_price']}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 13)),
+                        // Top 1:1 AspectRatio Image Container (Blinkit Square Style)
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              Container(
+                                color: const Color(0xFF1E293B),
+                                width: double.infinity,
+                                height: double.infinity,
+                                child: imgUrl != null
+                                    ? Image.network(
+                                        imgUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Center(
+                                          child: Text(svc['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 36)),
+                                        ),
+                                        loadingBuilder: (_, child, progress) {
+                                          if (progress == null) return child;
+                                          return const Center(
+                                            child: SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Center(
+                                        child: Text(svc['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 38)),
+                                      ),
+                              ),
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withAlpha(160),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${duration}m',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Bottom Content
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                svc['name']?.toString() ?? '',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13, height: 1.2),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '₹${svc['base_price']}',
+                                    style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 14),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.successGreen.withAlpha(30),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.successGreen, width: 1.5),
+                                    ),
+                                    child: const Text(
+                                      'ADD +',
+                                      style: TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
