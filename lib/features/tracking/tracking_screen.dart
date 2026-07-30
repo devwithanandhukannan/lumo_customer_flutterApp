@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -43,6 +44,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
   late String _endOtp;
   Timer? _telemetryPollTimer;
 
+  String _platformFee = '50';
+  bool _platformFeePaid = false;
+  String _balanceAmount = '499';
+  bool _balancePaid = false;
+  bool _payingRazorpay = false;
+
   String _proName = 'Assigned Professional';
   String _proRating = '5.0';
   LatLng _proLocation = LatLng(SessionStorage.activeLat - 0.003, SessionStorage.activeLng - 0.003);
@@ -80,6 +87,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
         final sOtp = (data['start_otp'] ?? _startOtp).toString();
         final eOtp = (data['end_otp'] ?? _endOtp).toString();
 
+        final pFee = (data['platform_fee'] ?? _platformFee).toString();
+        final pFeePaid = data['platform_fee_paid'] == true || data['platform_fee_paid'] == 'true';
+        final bAmt = (data['balance_amount'] ?? _balanceAmount).toString();
+        final bPaid = data['balance_paid'] == true || data['balance_paid'] == 'true';
+
         final pName = (data['pro_name'] ?? data['proName'] ?? 'Assigned Professional').toString();
         final pRating = (data['pro_rating'] ?? data['rating_avg'] ?? '5.0').toString();
 
@@ -99,6 +111,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
             _currentStatus = newStatus;
             _startOtp = sOtp;
             _endOtp = eOtp;
+            _platformFee = pFee;
+            _platformFeePaid = pFeePaid;
+            _balanceAmount = bAmt;
+            _balancePaid = bPaid;
             _proName = pName;
             _proRating = pRating;
             _proLocation = LatLng(finalProLat, finalProLng);
@@ -118,6 +134,117 @@ class _TrackingScreenState extends State<TrackingScreen> {
       }
     } catch (_) {
       _fetchRoadPolyline();
+    }
+  }
+
+  // ─── RAZORPAY STAGE 1: PAY PLATFORM FEE ───
+  Future<void> _handlePayPlatformFee() async {
+    setState(() => _payingRazorpay = true);
+    try {
+      final orderData = await ApiClient.createRazorpayOrder(
+        bookingId: widget.bookingId,
+        stage: 'PLATFORM_FEE',
+      );
+
+      final orderId = (orderData['orderId'] ?? 'order_stage1_${DateTime.now().millisecondsSinceEpoch}').toString();
+      final keyId = (orderData['keyId'] ?? 'rzp_test_T7vwejiBDVEZv1').toString();
+
+      if (!mounted) return;
+
+      // Launch Razorpay Checkout Modal
+      final paymentResult = await showDialog<Map<String, String>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _RazorpayCheckoutModal(
+          title: 'Pay Service Platform Fee',
+          amountText: '₹$_platformFee',
+          keyId: keyId,
+          orderId: orderId,
+          serviceName: widget.serviceName,
+          note: 'Pay Platform Fee to confirm booking & dispatch professional.',
+        ),
+      );
+
+      if (paymentResult != null && paymentResult['paymentId'] != null) {
+        await ApiClient.verifyPlatformFeePayment(
+          bookingId: widget.bookingId,
+          razorpayOrderId: orderId,
+          razorpayPaymentId: paymentResult['paymentId']!,
+          razorpaySignature: paymentResult['signature'],
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚡ Platform Fee paid! Booking is CONFIRMED & Professional is en route.'),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+        _loadBookingTelemetry();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _payingRazorpay = false);
+    }
+  }
+
+  // ─── RAZORPAY STAGE 2: PAY REMAINING BALANCE ───
+  Future<void> _handlePayBalance() async {
+    setState(() => _payingRazorpay = true);
+    try {
+      final orderData = await ApiClient.createRazorpayOrder(
+        bookingId: widget.bookingId,
+        stage: 'BALANCE',
+      );
+
+      final orderId = (orderData['orderId'] ?? 'order_stage2_${DateTime.now().millisecondsSinceEpoch}').toString();
+      final keyId = (orderData['keyId'] ?? 'rzp_test_T7vwejiBDVEZv1').toString();
+
+      if (!mounted) return;
+
+      final paymentResult = await showDialog<Map<String, String>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _RazorpayCheckoutModal(
+          title: 'Pay Remaining Service Balance',
+          amountText: '₹$_balanceAmount',
+          keyId: keyId,
+          orderId: orderId,
+          serviceName: widget.serviceName,
+          note: 'Final settlement to Professional upon job completion.',
+        ),
+      );
+
+      if (paymentResult != null && paymentResult['paymentId'] != null) {
+        await ApiClient.verifyBalancePayment(
+          bookingId: widget.bookingId,
+          razorpayOrderId: orderId,
+          razorpayPaymentId: paymentResult['paymentId']!,
+          razorpaySignature: paymentResult['signature'],
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Payment Complete! Professional credited. Thank you.'),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+        _loadBookingTelemetry();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _payingRazorpay = false);
     }
   }
 
@@ -476,6 +603,108 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 ),
               ),
             ],
+
+            if (_currentStatus.toUpperCase() == 'ACCEPTED_PAYMENT_PENDING' || (_currentStatus.toUpperCase() == 'ACCEPTED' && !_platformFeePaid)) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(26),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primary),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.bolt, color: AppColors.primary, size: 24),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Professional Accepted Your Booking!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
+                              Text('Pay Platform Fee to confirm dispatch & lock pro in.', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _payingRazorpay ? null : _handlePayPlatformFee,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: _payingRazorpay
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.payment, size: 18),
+                        label: Text(
+                          _payingRazorpay ? 'PROCESSING...' : 'PAY PLATFORM FEE (₹$_platformFee) VIA RAZORPAY',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (_currentStatus.toUpperCase() == 'JOB_COMPLETED_PAYMENT_DUE' || (_currentStatus.toUpperCase() == 'COMPLETED' && !_balancePaid)) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.successGreen.withAlpha(26),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.successGreen),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: AppColors.successGreen, size: 24),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Job Completed Successfully!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
+                              Text('Pay remaining balance to complete professional payout.', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _payingRazorpay ? null : _handlePayBalance,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.successGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: _payingRazorpay
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.account_balance_wallet, size: 18),
+                        label: Text(
+                          _payingRazorpay ? 'PROCESSING...' : 'PAY BALANCE (₹$_balanceAmount) VIA RAZORPAY',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -720,4 +949,163 @@ class _TrackingScreenState extends State<TrackingScreen> {
     ),
   );
 }
+}
+
+class _RazorpayCheckoutModal extends StatefulWidget {
+  final String title;
+  final String amountText;
+  final String keyId;
+  final String orderId;
+  final String serviceName;
+  final String note;
+
+  const _RazorpayCheckoutModal({
+    required this.title,
+    required this.amountText,
+    required this.keyId,
+    required this.orderId,
+    required this.serviceName,
+    required this.note,
+  });
+
+  @override
+  State<_RazorpayCheckoutModal> createState() => _RazorpayCheckoutModalState();
+}
+
+class _RazorpayCheckoutModalState extends State<_RazorpayCheckoutModal> {
+  bool _simulating = false;
+  String _selectedMethod = 'UPI (GPay / PhonePe / Paytm)';
+
+  void _processPayment() async {
+    setState(() => _simulating = true);
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    final paymentId = 'pay_${DateTime.now().millisecondsSinceEpoch.toString().substring(2)}';
+    const razorpaySecret = 'TSKG9X2v9JFJnVsW8Ha1HMt0';
+    final payload = '${widget.orderId}|$paymentId';
+    final hmacSha256 = Hmac(sha256, utf8.encode(razorpaySecret));
+    final signature = hmacSha256.convert(utf8.encode(payload)).toString();
+
+    if (mounted) {
+      Navigator.pop(context, {
+        'paymentId': paymentId,
+        'orderId': widget.orderId,
+        'signature': signature,
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: const Color(0x1A0C2340), borderRadius: BorderRadius.circular(12)),
+                  child: Image.network(
+                    'https://razorpay.com/assets/razorpay-glyph.svg',
+                    width: 24,
+                    height: 24,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.account_balance_wallet, color: Color(0xFF0C2340), size: 24),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                      Text('Razorpay Secure · ${widget.keyId.substring(0, 12)}...', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textMuted, size: 20),
+                  onPressed: () => Navigator.pop(context, null),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.cardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withAlpha(80)),
+              ),
+              child: Column(
+                children: [
+                  Text(widget.serviceName, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(widget.amountText, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.successGreen)),
+                  const SizedBox(height: 4),
+                  Text(widget.note, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            const Text('SELECT PAYMENT METHOD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted, letterSpacing: 0.8)),
+            const SizedBox(height: 8),
+
+            _buildMethodOption('UPI (GPay / PhonePe / Paytm)', Icons.qr_code_scanner),
+            const SizedBox(height: 8),
+            _buildMethodOption('Credit / Debit Card (Visa, MasterCard)', Icons.credit_card),
+            const SizedBox(height: 8),
+            _buildMethodOption('Net Banking (SBI, HDFC, ICICI)', Icons.account_balance),
+
+            const SizedBox(height: 20),
+
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0C2340),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: _simulating ? null : _processPayment,
+                child: _simulating
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text('PAY ${widget.amountText} WITH RAZORPAY', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMethodOption(String label, IconData icon) {
+    final isSelected = _selectedMethod == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedMethod = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primarySoft : AppColors.cardBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: isSelected ? AppColors.primary : AppColors.textMuted),
+            const SizedBox(width: 12),
+            Expanded(child: Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: Colors.white))),
+            if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
 }

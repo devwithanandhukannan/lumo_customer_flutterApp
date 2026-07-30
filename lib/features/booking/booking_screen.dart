@@ -286,11 +286,13 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                       child: Column(
                         children: [
-                          _chargeRow('Base Fee', '₹${_basePrice?.toStringAsFixed(0) ?? '0'}', Colors.white),
+                          _chargeRow('Professional Fee', '₹${_basePrice?.toStringAsFixed(0) ?? '0'}', Colors.white),
                           const SizedBox(height: 4),
                           _chargeRow('Travel Fee (${_distanceKm?.toStringAsFixed(1) ?? '0'} km)', '₹${_travelCharge?.toStringAsFixed(0) ?? '0'}', AppColors.textMuted),
+                          const SizedBox(height: 4),
+                          _chargeRow('Platform Fee (Service Platform Fee)', '₹50', AppColors.warningAmber),
                           const Divider(color: AppColors.border, height: 16),
-                          _chargeRow('Total', '₹${_totalAmount?.toStringAsFixed(0) ?? '0'}', AppColors.successGreen, bold: true),
+                          _chargeRow('Total', '₹${((_totalAmount ?? 0) + 50).toStringAsFixed(0)}', AppColors.successGreen, bold: true),
                         ],
                       ),
                     ),

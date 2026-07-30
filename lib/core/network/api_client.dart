@@ -14,13 +14,31 @@ class ApiClient {
     }
   }
 
+  static String _extractErrorMessage(dynamic body, {required String defaultMsg}) {
+    if (body is Map) {
+      if (body['message'] is String && (body['message'] as String).isNotEmpty) {
+        return body['message'];
+      }
+      if (body['error'] is Map) {
+        final errMap = body['error'] as Map;
+        if (errMap['message'] is String && (errMap['message'] as String).isNotEmpty) {
+          return errMap['message'];
+        }
+      }
+      if (body['error'] is String && (body['error'] as String).isNotEmpty) {
+        return body['error'];
+      }
+    }
+    return defaultMsg;
+  }
+
   static String _defaultBaseUrl() {
     if (kIsWeb) return 'http://localhost:8000';
     try {
-      if (Platform.isAndroid) return 'http://192.168.1.8:8000';
-      if (Platform.isIOS) return 'http://192.168.1.8:8000';
+      if (Platform.isAndroid) return 'http://192.168.1.6:8000';
+      if (Platform.isIOS) return 'http://192.168.1.6:8000';
     } catch (_) {}
-    return 'http://192.168.1.8:8000';
+    return 'http://192.168.1.6:8000';
   }
 
   static String baseUrl = _defaultBaseUrl();
@@ -42,6 +60,8 @@ class ApiClient {
   ) async {
     final candidateUrls = <String>{
       baseUrl,
+      'http://192.168.1.6:8000',
+      'http://192.168.1.3:8000',
       'http://192.168.1.8:8000',
       if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:8000',
       if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:5000',
@@ -225,7 +245,7 @@ class ApiClient {
     ));
     final body = jsonDecode(res.body);
     if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
-    throw Exception(body['message'] ?? 'Failed to create booking');
+    throw Exception(_extractErrorMessage(body, defaultMsg: 'Failed to create booking'));
   }
 
   static Future<Map<String, dynamic>> getBookingDetails(String bookingId) async {
@@ -376,5 +396,63 @@ class ApiClient {
       final body = jsonDecode(res.body);
       throw Exception(body['message'] ?? 'Failed to change password');
     }
+  }
+
+  // ─── RAZORPAY 2-STAGE PAYMENT APIS ───
+
+  static Future<Map<String, dynamic>> createRazorpayOrder({
+    required String bookingId,
+    required String stage, // 'PLATFORM_FEE' | 'BALANCE'
+  }) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/payments/create-order'),
+      headers: _authHeaders,
+      body: jsonEncode({'bookingId': bookingId, 'stage': stage}),
+    ));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
+    throw Exception(body['message'] ?? 'Failed to create Razorpay order');
+  }
+
+  static Future<Map<String, dynamic>> verifyPlatformFeePayment({
+    required String bookingId,
+    String? razorpayOrderId,
+    required String razorpayPaymentId,
+    String? razorpaySignature,
+  }) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/payments/verify-platform-fee'),
+      headers: _authHeaders,
+      body: jsonEncode({
+        'bookingId': bookingId,
+        'razorpayOrderId': razorpayOrderId,
+        'razorpayPaymentId': razorpayPaymentId,
+        'razorpaySignature': razorpaySignature,
+      }),
+    ));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
+    throw Exception(body['message'] ?? 'Failed to verify platform fee payment');
+  }
+
+  static Future<Map<String, dynamic>> verifyBalancePayment({
+    required String bookingId,
+    String? razorpayOrderId,
+    required String razorpayPaymentId,
+    String? razorpaySignature,
+  }) async {
+    final res = await _requestWithFallback((url) => http.post(
+      Uri.parse('$url/api/v1/payments/verify-balance'),
+      headers: _authHeaders,
+      body: jsonEncode({
+        'bookingId': bookingId,
+        'razorpayOrderId': razorpayOrderId,
+        'razorpayPaymentId': razorpayPaymentId,
+        'razorpaySignature': razorpaySignature,
+      }),
+    ));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
+    throw Exception(body['message'] ?? 'Failed to verify balance payment');
   }
 }
