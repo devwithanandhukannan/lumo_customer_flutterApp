@@ -73,7 +73,7 @@ class ApiClient {
 
     for (final candidate in candidateUrls) {
       try {
-        final response = await requestFn(candidate).timeout(const Duration(seconds: 2));
+        final response = await requestFn(candidate).timeout(const Duration(seconds: 6));
         baseUrl = candidate;
         _checkResponseForUserError(response);
         return response;

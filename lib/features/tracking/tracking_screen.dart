@@ -470,11 +470,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Color get _statusColor {
     switch (_currentStatus.toUpperCase()) {
       case 'REQUESTED': return AppColors.warningAmber;
-      case 'ACCEPTED': return AppColors.primary;
+      case 'ACCEPTED':
+      case 'ACCEPTED_PAYMENT_PENDING':
+      case 'CONFIRMED':
       case 'NAVIGATING': return AppColors.primary;
-      case 'IN_PROGRESS': return AppColors.successGreen;
+      case 'IN_PROGRESS':
       case 'COMPLETED': return AppColors.successGreen;
-      default: return AppColors.textMuted;
+      default: return AppColors.primary;
     }
   }
 
