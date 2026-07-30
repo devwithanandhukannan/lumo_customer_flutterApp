@@ -19,6 +19,7 @@ dependencies:
   intl: ^0.20.2
   google_maps_flutter: ^2.10.0
   crypto: ^3.0.6
+  razorpay_flutter: ^1.4.5
 
 dev_dependencies:
   flutter_test:

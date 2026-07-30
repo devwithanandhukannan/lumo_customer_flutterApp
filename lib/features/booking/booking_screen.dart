@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../location/location_picker_modal.dart';
 import '../tracking/tracking_screen.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -59,22 +60,140 @@ class _BookingScreenState extends State<BookingScreen> {
     super.dispose();
   }
 
-  // Update 7: Real GPS using geolocator
+  Future<void> _showLocationServiceDialog() async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.location_off, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text('Turn On Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'Location services (GPS) are turned off on your device. Please turn on location to discover nearby professionals and check service availability in your area.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.settings, size: 16),
+            label: const Text('Turn On GPS', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await Geolocator.openLocationSettings();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showPermissionSettingsDialog() async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.security, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text('Location Permission', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'Location permission is permanently denied. Please enable location permission in app settings to proceed with booking.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.settings, size: 16),
+            label: const Text('Open Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await Geolocator.openAppSettings();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openLocationPickerModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => LocationPickerModal(
+        initialAddress: _addressController.text,
+        initialLat: _lat,
+        initialLng: _lng,
+        onLocationSelected: (address, lat, lng) {
+          setState(() {
+            _lat = lat;
+            _lng = lng;
+            _addressController.text = address;
+          });
+          SessionStorage.setLocation(address, lat, lng);
+          _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lng), 15));
+          _loadProsForLocation();
+        },
+      ),
+    );
+  }
+
+  // Update 7: Real GPS using geolocator with Location Services check
   Future<void> _useLiveLocation({bool silent = false}) async {
     if (!silent) setState(() => _fetchingLocation = true);
     try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _fetchingLocation = false);
+        if (!silent) {
+          await _showLocationServiceDialog();
+        }
+        return;
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.deniedForever) {
-        if (!silent && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permission permanently denied. Please enable in settings.')),
-          );
+        if (mounted) setState(() => _fetchingLocation = false);
+        if (!silent) {
+          await _showPermissionSettingsDialog();
         }
         return;
       }
+      if (permission == LocationPermission.denied) {
+        if (mounted) setState(() => _fetchingLocation = false);
+        return;
+      }
+
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 8),
@@ -87,9 +206,10 @@ class _BookingScreenState extends State<BookingScreen> {
           _addressController.text = 'Live GPS: (${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)})';
           _fetchingLocation = false;
         });
+        SessionStorage.setLocation(_addressController.text, pos.latitude, pos.longitude);
         _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 15));
         await _loadProsForLocation();
-        if (mounted) {
+        if (!silent && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('📍 Live GPS location captured'), backgroundColor: Colors.green),
           );
@@ -99,9 +219,13 @@ class _BookingScreenState extends State<BookingScreen> {
       if (mounted) {
         setState(() => _fetchingLocation = false);
         if (!silent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not get GPS location: ${e.toString()}')),
-          );
+          if (e is LocationServiceDisabledException) {
+            await _showLocationServiceDialog();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not get GPS location: ${e.toString()}')),
+            );
+          }
         }
       }
     }
@@ -441,27 +565,65 @@ class _BookingScreenState extends State<BookingScreen> {
         ),
         const SizedBox(height: 10),
 
-        // No pros banner
+        // No pros banner with interactive options
         if (!_hasAvailablePros && !_loadingPros)
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.emergencyRed.withAlpha(20),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.emergencyRed.withAlpha(80)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.person_off_outlined, color: AppColors.emergencyRed, size: 22),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('No Professionals Available', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text('No approved professionals are currently online in your area for this service.', style: TextStyle(color: AppColors.emergencyRed, fontSize: 11)),
-                    ],
-                  ),
+                const Row(
+                  children: [
+                    Icon(Icons.person_off_outlined, color: AppColors.emergencyRed, size: 22),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('No Professionals Available Nearby', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                          SizedBox(height: 2),
+                          Text('No approved professionals are currently active in your area for this service.', style: TextStyle(color: AppColors.emergencyRed, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.my_location, size: 14),
+                        label: const Text('Turn On GPS / Retry', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () => _useLiveLocation(silent: false),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.map_outlined, size: 14),
+                        label: const Text('Pick Location', style: TextStyle(fontSize: 11)),
+                        onPressed: _openLocationPickerModal,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

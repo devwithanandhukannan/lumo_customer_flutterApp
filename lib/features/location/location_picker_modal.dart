@@ -46,9 +46,57 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
     super.dispose();
   }
 
+  Future<void> _showLocationServiceDialog() async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.location_off, color: Colors.orangeAccent),
+            SizedBox(width: 10),
+            Text('Turn On Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'Location services (GPS) are turned off on your device. Please turn on location to pick your live GPS address.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.settings, size: 16),
+            label: const Text('Turn On GPS', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await Geolocator.openLocationSettings();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _fetchLiveGpsLocation() async {
     setState(() => _locating = true);
     try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _locating = false);
+        await _showLocationServiceDialog();
+        return;
+      }
+
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
@@ -67,7 +115,11 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
         }
         return;
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e is LocationServiceDisabledException) {
+        await _showLocationServiceDialog();
+      }
+    }
     if (mounted) setState(() => _locating = false);
   }
 

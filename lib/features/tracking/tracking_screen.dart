@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
@@ -57,9 +58,17 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   late List<LatLng> _roadPoints = [_proLocation, _customerLocation];
 
+  late Razorpay _razorpay;
+  String? _currentPaymentStage;
+  String? _currentOrderId;
+
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleRazorpaySuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handleRazorpayError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleRazorpayExternalWallet);
     _currentStatus = widget.status;
     _startOtp = widget.startOtp;
     _endOtp = widget.endOtp;
@@ -68,6 +77,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
       _startCountdown();
     }
     _startTelemetryPolling();
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    _telemetryPollTimer?.cancel();
+    _reviewController.dispose();
+    _razorpay.clear();
+    super.dispose();
   }
 
   void _startTelemetryPolling() {
@@ -137,9 +155,122 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
   }
 
+  Future<void> _verifyAndProcessPayment({
+    required String paymentId,
+    required String orderId,
+    String? signature,
+  }) async {
+    try {
+      if (_currentPaymentStage == 'PLATFORM_FEE') {
+        await ApiClient.verifyPlatformFeePayment(
+          bookingId: widget.bookingId,
+          razorpayOrderId: orderId,
+          razorpayPaymentId: paymentId,
+          razorpaySignature: signature,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚡ Platform Fee paid! Booking is CONFIRMED & Professional is en route.'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        }
+      } else {
+        await ApiClient.verifyBalancePayment(
+          bookingId: widget.bookingId,
+          razorpayOrderId: orderId,
+          razorpayPaymentId: paymentId,
+          razorpaySignature: signature,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Payment Complete! Professional credited. Thank you.'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        }
+      }
+      _loadBookingTelemetry();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment verification error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _payingRazorpay = false);
+    }
+  }
+
+  // ─── RAZORPAY SDK CALLBACK HANDLERS ───
+  void _handleRazorpaySuccess(PaymentSuccessResponse response) {
+    final paymentId = response.paymentId ?? 'pay_${DateTime.now().millisecondsSinceEpoch}';
+    final orderId = response.orderId ?? _currentOrderId ?? '';
+    final signature = response.signature;
+    _verifyAndProcessPayment(paymentId: paymentId, orderId: orderId, signature: signature);
+  }
+
+  void _handleRazorpayError(PaymentFailureResponse response) {
+    if (mounted) {
+      setState(() => _payingRazorpay = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment cancelled or failed: ${response.message ?? 'Code ${response.code}'}'),
+          backgroundColor: AppColors.emergencyRed,
+        ),
+      );
+    }
+  }
+
+  void _handleRazorpayExternalWallet(ExternalWalletResponse response) {
+    if (mounted) {
+      setState(() => _payingRazorpay = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('External wallet selected: ${response.walletName}'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openFallbackCheckoutModal({
+    required String orderId,
+    required String keyId,
+    required String stage,
+  }) async {
+    final paymentResult = await showDialog<Map<String, String>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _RazorpayCheckoutModal(
+        title: stage == 'PLATFORM_FEE' ? 'Pay Service Platform Fee' : 'Pay Remaining Service Balance',
+        amountText: stage == 'PLATFORM_FEE' ? '₹$_platformFee' : '₹$_balanceAmount',
+        keyId: keyId,
+        orderId: orderId,
+        serviceName: widget.serviceName,
+        note: stage == 'PLATFORM_FEE'
+            ? 'Pay Platform Fee to confirm booking & dispatch professional.'
+            : 'Final settlement to Professional upon job completion.',
+      ),
+    );
+
+    if (paymentResult != null && paymentResult['paymentId'] != null) {
+      await _verifyAndProcessPayment(
+        paymentId: paymentResult['paymentId']!,
+        orderId: paymentResult['orderId'] ?? orderId,
+        signature: paymentResult['signature'],
+      );
+    } else {
+      if (mounted) setState(() => _payingRazorpay = false);
+    }
+  }
+
   // ─── RAZORPAY STAGE 1: PAY PLATFORM FEE ───
   Future<void> _handlePayPlatformFee() async {
     setState(() => _payingRazorpay = true);
+    _currentPaymentStage = 'PLATFORM_FEE';
     try {
       final orderData = await ApiClient.createRazorpayOrder(
         bookingId: widget.bookingId,
@@ -148,54 +279,43 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
       final orderId = (orderData['orderId'] ?? 'order_stage1_${DateTime.now().millisecondsSinceEpoch}').toString();
       final keyId = (orderData['keyId'] ?? 'rzp_test_T7vwejiBDVEZv1').toString();
+      final num rawAmount = (orderData['amount'] as num?) ?? (double.tryParse(_platformFee) ?? 50) * 100;
+      _currentOrderId = orderId;
 
-      if (!mounted) return;
+      var options = {
+        'key': keyId,
+        'amount': rawAmount.toInt(),
+        'name': 'LUMO Home Services',
+        'description': 'Service Platform Fee',
+        'order_id': orderId,
+        'prefill': {
+          'contact': SessionStorage.userPhone.isNotEmpty ? SessionStorage.userPhone : '+919999999999',
+          'email': 'customer@lumo.in',
+        },
+        'external': {
+          'wallets': ['paytm']
+        }
+      };
 
-      // Launch Razorpay Checkout Modal
-      final paymentResult = await showDialog<Map<String, String>>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => _RazorpayCheckoutModal(
-          title: 'Pay Service Platform Fee',
-          amountText: '₹$_platformFee',
-          keyId: keyId,
-          orderId: orderId,
-          serviceName: widget.serviceName,
-          note: 'Pay Platform Fee to confirm booking & dispatch professional.',
-        ),
-      );
-
-      if (paymentResult != null && paymentResult['paymentId'] != null) {
-        await ApiClient.verifyPlatformFeePayment(
-          bookingId: widget.bookingId,
-          razorpayOrderId: orderId,
-          razorpayPaymentId: paymentResult['paymentId']!,
-          razorpaySignature: paymentResult['signature'],
-        );
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚡ Platform Fee paid! Booking is CONFIRMED & Professional is en route.'),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-        _loadBookingTelemetry();
+      try {
+        _razorpay.open(options);
+      } catch (_) {
+        await _openFallbackCheckoutModal(orderId: orderId, keyId: keyId, stage: 'PLATFORM_FEE');
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _payingRazorpay = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Payment error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
         );
       }
-    } finally {
-      if (mounted) setState(() => _payingRazorpay = false);
     }
   }
 
   // ─── RAZORPAY STAGE 2: PAY REMAINING BALANCE ───
   Future<void> _handlePayBalance() async {
     setState(() => _payingRazorpay = true);
+    _currentPaymentStage = 'BALANCE';
     try {
       final orderData = await ApiClient.createRazorpayOrder(
         bookingId: widget.bookingId,
@@ -204,47 +324,36 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
       final orderId = (orderData['orderId'] ?? 'order_stage2_${DateTime.now().millisecondsSinceEpoch}').toString();
       final keyId = (orderData['keyId'] ?? 'rzp_test_T7vwejiBDVEZv1').toString();
+      final num rawAmount = (orderData['amount'] as num?) ?? (double.tryParse(_balanceAmount) ?? 499) * 100;
+      _currentOrderId = orderId;
 
-      if (!mounted) return;
+      var options = {
+        'key': keyId,
+        'amount': rawAmount.toInt(),
+        'name': 'LUMO Home Services',
+        'description': 'Remaining Service Balance',
+        'order_id': orderId,
+        'prefill': {
+          'contact': SessionStorage.userPhone.isNotEmpty ? SessionStorage.userPhone : '+919999999999',
+          'email': 'customer@lumo.in',
+        },
+        'external': {
+          'wallets': ['paytm']
+        }
+      };
 
-      final paymentResult = await showDialog<Map<String, String>>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => _RazorpayCheckoutModal(
-          title: 'Pay Remaining Service Balance',
-          amountText: '₹$_balanceAmount',
-          keyId: keyId,
-          orderId: orderId,
-          serviceName: widget.serviceName,
-          note: 'Final settlement to Professional upon job completion.',
-        ),
-      );
-
-      if (paymentResult != null && paymentResult['paymentId'] != null) {
-        await ApiClient.verifyBalancePayment(
-          bookingId: widget.bookingId,
-          razorpayOrderId: orderId,
-          razorpayPaymentId: paymentResult['paymentId']!,
-          razorpaySignature: paymentResult['signature'],
-        );
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Payment Complete! Professional credited. Thank you.'),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-        _loadBookingTelemetry();
+      try {
+        _razorpay.open(options);
+      } catch (_) {
+        await _openFallbackCheckoutModal(orderId: orderId, keyId: keyId, stage: 'BALANCE');
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _payingRazorpay = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Payment error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
         );
       }
-    } finally {
-      if (mounted) setState(() => _payingRazorpay = false);
     }
   }
 
@@ -288,13 +397,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _telemetryPollTimer?.cancel();
-    _countdownTimer?.cancel();
-    _reviewController.dispose();
-    super.dispose();
-  }
+
 
   void _startCountdown() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
