@@ -845,20 +845,40 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         child: Icon(Icons.person, color: Colors.white, size: 22),
                       ),
                       const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(_proName, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.verified, color: AppColors.primary, size: 16),
-                            ],
-                          ),
-                          Text('Police Clear Badge · ★ $_proRating · Verified Pro', style: const TextStyle(fontSize: 11, color: AppColors.successGreen)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(_proName, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified, color: AppColors.primary, size: 16),
+                              ],
+                            ),
+                            Text(
+                              _platformFeePaid ? 'Police Clear Badge · ★ $_proRating · Verified Pro' : '🔒 Pay Platform Fee to Unlock Direct Calling & Live Tracking',
+                              style: TextStyle(fontSize: 11, color: _platformFeePaid ? AppColors.successGreen : AppColors.warningAmber),
+                            ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
+                      if (_platformFeePaid)
+                        IconButton(
+                          icon: const Icon(Icons.phone, color: AppColors.primary),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Calling professional $_proName...')));
+                          },
+                          tooltip: 'Call Professional',
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.lock_clock_outlined, color: AppColors.textMuted),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🔒 Direct phone calling unlocks automatically after paying Platform Fee.')));
+                          },
+                          tooltip: 'Contact Locked',
+                        ),
                       if (_currentStatus.toUpperCase() == 'COMPLETED')
                         IconButton(
                           icon: const Icon(Icons.star, color: AppColors.warningAmber, size: 28),
