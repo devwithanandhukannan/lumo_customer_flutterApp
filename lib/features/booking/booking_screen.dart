@@ -634,7 +634,7 @@ class _BookingScreenState extends State<BookingScreen> {
         // Pro cards
         else if (_availablePros.isNotEmpty)
           SizedBox(
-            height: 154,
+            height: 168,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _availablePros.length,
@@ -658,8 +658,8 @@ class _BookingScreenState extends State<BookingScreen> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: 145,
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(right: 12, bottom: 4),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: isSelected ? AppColors.primarySoft : AppColors.cardBg,
                       borderRadius: BorderRadius.circular(18),
@@ -679,10 +679,10 @@ class _BookingScreenState extends State<BookingScreen> {
                             Stack(
                               children: [
                                 CircleAvatar(
-                                  radius: 18,
+                                  radius: 17,
                                   backgroundColor: isFemale ? const Color(0x33EC4899) : AppColors.primarySoft,
                                   backgroundImage: imgUrl != null ? NetworkImage(imgUrl) : null,
-                                  child: imgUrl == null ? Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 16)) : null,
+                                  child: imgUrl == null ? Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 15)) : null,
                                 ),
                                 if (isVerified)
                                   Positioned(
@@ -696,20 +696,21 @@ class _BookingScreenState extends State<BookingScreen> {
                               ],
                             ),
                             const Spacer(),
-                            IconButton(
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.info_outline_rounded, color: AppColors.textMuted, size: 16),
-                              tooltip: 'View Profile',
-                              onPressed: () => _showProProfileModal(pro),
+                            GestureDetector(
+                              onTap: () => _showProProfileModal(pro),
+                              behavior: HitTestBehavior.opaque,
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(Icons.info_outline_rounded, color: AppColors.textMuted, size: 16),
+                              ),
                             ),
                             if (isSelected) ...[
                               const SizedBox(width: 4),
-                              const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 16),
                             ],
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             Flexible(
