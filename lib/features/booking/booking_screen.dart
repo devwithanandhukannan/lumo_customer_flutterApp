@@ -261,13 +261,18 @@ class _BookingScreenState extends State<BookingScreen> {
           _hasAvailablePros = _availablePros.isNotEmpty;
           _loadingPros = false;
           _checkingAvailability = false;
-          // Auto-select first pro if none selected
-          if (_selectedProId == null && _availablePros.isNotEmpty) {
-            _selectedProId = _availablePros.first['proId']?.toString();
+
+          if (_availablePros.isNotEmpty) {
+            final proExists = _selectedProId != null && _availablePros.any((p) => p['proId']?.toString() == _selectedProId);
+            if (!proExists) {
+              _selectedProId = _availablePros.first['proId']?.toString();
+            }
             _updateEstimate();
-          } else if (_availablePros.isEmpty) {
+          } else {
             _selectedProId = null;
-            _distanceKm = null; _travelCharge = null; _totalAmount = null;
+            _distanceKm = null;
+            _travelCharge = null;
+            _totalAmount = null;
           }
         });
       }
@@ -276,17 +281,21 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  // Update 1: Update charge estimate when pro is selected
+  // Update 1: Update charge estimate when pro is selected or location changes
   void _updateEstimate() {
-    if (_selectedProId == null) return;
+    if (_selectedProId == null || _availablePros.isEmpty) return;
     try {
-      final pro = _availablePros.firstWhere((p) => p['proId']?.toString() == _selectedProId);
+      final pro = _availablePros.firstWhere(
+        (p) => p['proId']?.toString() == _selectedProId,
+        orElse: () => _availablePros.first,
+      );
       setState(() {
-        _distanceKm = (pro['distanceKm'] as num?)?.toDouble();
-        _travelCharge = (pro['travelCharge'] as num?)?.toDouble();
-        _basePrice = (pro['serviceBasePrice'] as num?)?.toDouble() ?? double.tryParse(widget.service['base_price']?.toString() ?? '0');
-        _totalAmount = (pro['estimatedTotal'] as num?)?.toDouble();
-        _kmCharge = (pro['kmCharge'] as num?)?.toDouble();
+        _selectedProId = pro['proId']?.toString();
+        _distanceKm = (pro['distanceKm'] as num?)?.toDouble() ?? 0.0;
+        _travelCharge = (pro['travelCharge'] as num?)?.toDouble() ?? 0.0;
+        _basePrice = (pro['serviceBasePrice'] as num?)?.toDouble() ?? double.tryParse(widget.service['base_price']?.toString() ?? '0') ?? 0.0;
+        _totalAmount = (pro['estimatedTotal'] as num?)?.toDouble() ?? ((_basePrice ?? 0) + (_travelCharge ?? 0) + 50);
+        _kmCharge = (pro['kmCharge'] as num?)?.toDouble() ?? 15.0;
       });
     } catch (_) {}
   }
