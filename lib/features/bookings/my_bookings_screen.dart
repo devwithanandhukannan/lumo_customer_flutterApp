@@ -144,13 +144,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       setDialogState(() => reporting = true);
                       try {
                         await ApiClient.reportBooking(bookingId: bookingId, reason: controller.text.trim());
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('⚠️ Report submitted to LUMO Safety Control Center')),
                         );
                       } catch (e) {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Error: ${e.toString()}')),
                         );

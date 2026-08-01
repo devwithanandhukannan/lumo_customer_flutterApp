@@ -192,7 +192,7 @@ class _HomeTab extends StatelessWidget {
                 gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.shield_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.shield_rounded, color: Color(0xFF0F172A), size: 18),
             ),
             const SizedBox(width: 10),
             Column(

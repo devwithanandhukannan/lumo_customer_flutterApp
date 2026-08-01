@@ -2,21 +2,23 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color background = Color(0xFF080B11);
-  static const Color surface = Color(0xFF0E1420);
-  static const Color cardBg = Color(0xFF141B2D);
-  static const Color inputFill = Color(0xFF0E1420);
+  // Premium Warm Yellow-White Theme Foundation
+  static const Color background = Color(0xFF0F121A);
+  static const Color surface = Color(0xFF171B26);
+  static const Color cardBg = Color(0xFF1F2433);
+  static const Color inputFill = Color(0xFF171B26);
 
-  static const Color border = Color(0x1AFFFFFF);
-  static const Color glassBg = Color(0x1AFFFFFF);
-  static const Color glassBorder = Color(0x26FFFFFF);
-  static const Color glassBorderBright = Color(0x40FFFFFF);
+  static const Color border = Color(0x26FEF08A);
+  static const Color glassBg = Color(0x1AFEF08A);
+  static const Color glassBorder = Color(0x33EAB308);
+  static const Color glassBorderBright = Color(0x66FEF08A);
 
-  static const Color primary = Color(0xFF3B82F6);
-  static const Color primaryDark = Color(0xFF2563EB);
-  static const Color primarySoft = Color(0x1A3B82F6);
-  static const Color primaryLight = Color(0xFF93C5FD);
-  static const Color secondary = Color(0xFF6366F1);
+  // Vibrant Gold-Yellow & Warm White Theme Palette
+  static const Color primary = Color(0xFFEAB308);        // Warm Sun Yellow / Gold
+  static const Color primaryDark = Color(0xFFCA8A04);    // Deep Amber Gold
+  static const Color primarySoft = Color(0x26EAB308);    // Soft Gold Glow
+  static const Color primaryLight = Color(0xFFFEF08A);   // Cream Butter Yellow
+  static const Color secondary = Color(0xFFF59E0B);      // Warm Amber Accent
   static const Color emergencyRed = Color(0xFFEF4444);
   static const Color emergencyRedSoft = Color(0x1AEF4444);
   static const Color emergencyRedBorder = Color(0x40EF4444);
@@ -24,11 +26,12 @@ class AppColors {
   static const Color successGreenSoft = Color(0x1F10B981);
   static const Color warningAmber = Color(0xFFF59E0B);
 
-  static const Color textPrimary = Color(0xFFF0F4FF);
-  static const Color textSecondary = Color(0xFFCBD5E1);
-  static const Color textMuted = Color(0xFF7C8DB0);
-  static const Color textDisabled = Color(0xFF4A5568);
-  static const Color blueSoft = Color(0x1A3B82F6);
+  // Text Colors tuned for Yellow-White Aesthetics
+  static const Color textPrimary = Color(0xFFFFFFFF);     // Pure White
+  static const Color textSecondary = Color(0xFFF3F4F6);   // Warm Off-White
+  static const Color textMuted = Color(0xFF9CA3AF);       // Muted Slate
+  static const Color textDisabled = Color(0xFF4B5563);    // Dark Muted
+  static const Color blueSoft = Color(0x26EAB308);
 }
 
 class AppText {
@@ -38,8 +41,8 @@ class AppText {
   static const TextStyle body = TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textSecondary);
   static const TextStyle caption = TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.textMuted);
   static const TextStyle mono = TextStyle(fontSize: 13, fontFamily: 'monospace', color: AppColors.textPrimary);
-  static const TextStyle label = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 0.8);
-  static const TextStyle buttonText = TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.8);
+  static const TextStyle label = TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryLight, letterSpacing: 0.8);
+  static const TextStyle buttonText = TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: 0.8);
 }
 
 InputDecoration lumoInputDecoration({String? hint, Widget? prefix, Widget? suffix, String? label}) {
@@ -91,7 +94,7 @@ class AppGlassCard extends StatelessWidget {
           padding: padding,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: gradientColors ?? [const Color(0x1AFFFFFF), const Color(0x0AFFFFFF)],
+              colors: gradientColors ?? [const Color(0x1AFEF08A), const Color(0x0AFEF08A)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -122,7 +125,7 @@ class AppGradientButton extends StatelessWidget {
     required this.onTap,
     this.isLoading = false,
     this.height = 54,
-    this.colors = const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+    this.colors = const [Color(0xFFEAB308), Color(0xFFCA8A04)],
     this.icon,
   });
 
@@ -136,15 +139,15 @@ class AppGradientButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: isLoading ? [AppColors.surface, AppColors.surface] : colors),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isLoading ? [] : [BoxShadow(color: colors.first.withAlpha(80), blurRadius: 20, offset: const Offset(0, 8))],
+          boxShadow: isLoading ? [] : [BoxShadow(color: colors.first.withAlpha(90), blurRadius: 18, offset: const Offset(0, 6))],
         ),
         child: Center(
           child: isLoading
-              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Color(0xFF0F172A), strokeWidth: 2.5))
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (icon != null) ...[Icon(icon, color: Colors.white, size: 18), const SizedBox(width: 8)],
+                    if (icon != null) ...[Icon(icon, color: const Color(0xFF0F172A), size: 18), const SizedBox(width: 8)],
                     Text(label, style: AppText.buttonText),
                   ],
                 ),
@@ -165,15 +168,15 @@ class AppTheme {
         secondary: AppColors.secondary,
         surface: AppColors.surface,
         error: AppColors.emergencyRed,
-        onPrimary: Colors.white,
+        onPrimary: Color(0xFF0F172A),
         onSurface: AppColors.textPrimary,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-        iconTheme: IconThemeData(color: AppColors.textMuted),
+        titleTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        iconTheme: IconThemeData(color: AppColors.primary),
       ),
       cardTheme: CardThemeData(
         color: AppColors.cardBg,

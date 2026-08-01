@@ -530,13 +530,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
                               rating: _selectedRating,
                               comment: _reviewController.text.trim(),
                             );
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('⭐ Review submitted! Thank you.')),
                             );
                           } catch (e) {
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Review error: ${e.toString()}')),
                             );
@@ -602,13 +602,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           setModalState(() => submitting = true);
                           try {
                             await ApiClient.reportBooking(bookingId: widget.bookingId, reason: reasonCtrl.text.trim());
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('🚨 Report logged & escalated to LUMO Safety Control Center.')),
                             );
                           } catch (e) {
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Report error: ${e.toString()}')),
                             );

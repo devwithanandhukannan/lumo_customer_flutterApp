@@ -485,20 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ),
 );
-  }
-
-  static final List<Map<String, dynamic>> _fallbackCategories = [
-    {'id': 'cat-clean', 'name': 'Cleaning'},
-    {'id': 'cat-elec', 'name': 'Electrical'},
-    {'id': 'cat-plumb', 'name': 'Plumbing'},
-    {'id': 'cat-salon', 'name': 'Salon & Spa'},
-    {'id': 'cat-safety', 'name': 'Safety'},
-  ];
-
-  List<Map<String, dynamic>> _getFallbackServices(String catId) {
-    return [
-      {'id': 'srv-clean-01', 'name': 'Home Deep Cleaning', 'base_price': '499', 'duration_minutes': 120, 'icon': '🧹'},
-      {'id': 'srv-clean-02', 'name': 'Kitchen Cleaning', 'base_price': '349', 'duration_minutes': 60, 'icon': '🍽️'},
-    ];
-  }
 }
+}
+
+

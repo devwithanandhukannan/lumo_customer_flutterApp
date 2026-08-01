@@ -102,7 +102,9 @@ class _LocationPickerModalState extends State<LocationPickerModal> {
         perm = await Geolocator.requestPermission();
       }
       if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
-        final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        );
         if (mounted) {
           setState(() {
             _selectedLat = pos.latitude;
