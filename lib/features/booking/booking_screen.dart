@@ -50,7 +50,7 @@ class _BookingScreenState extends State<BookingScreen> {
     super.initState();
     _femaleProPreferred = widget.femaleProPreferred;
     _basePrice = double.tryParse(widget.service['base_price']?.toString() ?? '0');
-    // Try to get real GPS on load
+    _loadProsForLocation();
     _useLiveLocation(silent: true);
   }
 
@@ -634,7 +634,7 @@ class _BookingScreenState extends State<BookingScreen> {
         // Pro cards
         else if (_availablePros.isNotEmpty)
           SizedBox(
-            height: 140,
+            height: 154,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _availablePros.length,
@@ -643,57 +643,115 @@ class _BookingScreenState extends State<BookingScreen> {
                 final proId = pro['proId']?.toString();
                 final isSelected = _selectedProId == proId;
                 final isFemale = (pro['gender']?.toString() ?? '').toUpperCase() == 'FEMALE';
+                final isVerified = pro['isVerified'] == true || pro['verificationStatus'] == 'APPROVED';
+                final rawAvatar = pro['avatarUrl']?.toString();
+                final imgUrl = (rawAvatar != null && rawAvatar.isNotEmpty)
+                    ? (rawAvatar.startsWith('http') ? rawAvatar : '${ApiClient.baseUrl}$rawAvatar')
+                    : null;
+
                 return GestureDetector(
                   onTap: () {
                     setState(() => _selectedProId = proId);
                     _updateEstimate();
                   },
+                  onLongPress: () => _showProProfileModal(pro),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 130,
-                    margin: const EdgeInsets.only(right: 10),
+                    width: 145,
+                    margin: const EdgeInsets.only(right: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isSelected ? AppColors.primarySoft : AppColors.cardBg,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: isSelected ? AppColors.primary : AppColors.border,
                         width: isSelected ? 2 : 1,
                       ),
+                      boxShadow: isSelected
+                          ? [BoxShadow(color: AppColors.primary.withAlpha(50), blurRadius: 10, offset: const Offset(0, 4))]
+                          : [],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: isFemale ? const Color(0x1AEC4899) : AppColors.primarySoft,
-                              child: Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 14)),
+                            Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: isFemale ? const Color(0x33EC4899) : AppColors.primarySoft,
+                                  backgroundImage: imgUrl != null ? NetworkImage(imgUrl) : null,
+                                  child: imgUrl == null ? Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 16)) : null,
+                                ),
+                                if (isVerified)
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      decoration: const BoxDecoration(color: AppColors.cardBg, shape: BoxShape.circle),
+                                      child: const Icon(Icons.verified, color: AppColors.primary, size: 12),
+                                    ),
+                                  ),
+                              ],
                             ),
                             const Spacer(),
-                            if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                            IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.info_outline_rounded, color: AppColors.textMuted, size: 16),
+                              tooltip: 'View Profile',
+                              onPressed: () => _showProProfileModal(pro),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.check_circle, color: AppColors.primary, size: 16),
+                            ],
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          pro['name']?.toString() ?? 'Professional',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                pro['name']?.toString() ?? 'Professional',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isVerified) ...[
+                              const SizedBox(width: 3),
+                              const Icon(Icons.verified, color: AppColors.primary, size: 12),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Row(
                           children: [
-                            const Icon(Icons.star, color: Color(0xFFF59E0B), size: 12),
+                            const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 13),
                             const SizedBox(width: 2),
-                            Text((pro['ratingAvg'] ?? 5.0).toStringAsFixed(1), style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.bold)),
+                            Text(
+                              ((pro['ratingAvg'] as num?)?.toDouble() ?? 5.0).toStringAsFixed(1),
+                              style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${pro['totalJobsCompleted'] ?? 0})',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text('${(pro['distanceKm'] ?? 0).toStringAsFixed(1)} km away', style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                        const SizedBox(height: 2),
-                        Text('≈ ₹${(pro['estimatedTotal'] ?? 0).toStringAsFixed(0)}', style: const TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.bold, fontSize: 11)),
+                        Text(
+                          '${((pro['distanceKm'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)} km away',
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '≈ ₹${((pro['estimatedTotal'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
+                          style: const TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.w900, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
@@ -711,6 +769,247 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+  void _showProProfileModal(Map<String, dynamic> pro) {
+    final proId = pro['proId']?.toString();
+    final name = pro['name']?.toString() ?? 'Professional';
+    final rawAvatar = pro['avatarUrl']?.toString();
+    final imgUrl = (rawAvatar != null && rawAvatar.isNotEmpty)
+        ? (rawAvatar.startsWith('http') ? rawAvatar : '${ApiClient.baseUrl}$rawAvatar')
+        : null;
+    final isFemale = (pro['gender']?.toString() ?? '').toUpperCase() == 'FEMALE';
+    final isVerified = pro['isVerified'] == true || pro['verificationStatus'] == 'APPROVED';
+    final ratingAvg = (pro['ratingAvg'] as num?)?.toDouble() ?? 5.0;
+    final jobsCount = pro['totalJobsCompleted'] ?? 0;
+    final distance = (pro['distanceKm'] as num?)?.toDouble() ?? 0.0;
+    final estTotal = (pro['estimatedTotal'] as num?)?.toDouble() ?? 0.0;
+    final basePrice = (pro['serviceBasePrice'] as num?)?.toDouble() ?? 0.0;
+    final travelCharge = (pro['travelCharge'] as num?)?.toDouble() ?? 0.0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.cardBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: AppColors.glassBorderBright, width: 1.5)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: isFemale ? const Color(0x33EC4899) : AppColors.primarySoft,
+                      backgroundImage: imgUrl != null ? NetworkImage(imgUrl) : null,
+                      child: imgUrl == null ? Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 28)) : null,
+                    ),
+                    if (isVerified)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
+                          child: const Icon(Icons.verified, color: AppColors.primary, size: 18),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              name,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isVerified) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.verified, color: AppColors.primary, size: 18),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isFemale ? const Color(0x33EC4899) : AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          isFemale ? '👩 Female Professional' : '👨 LUMO Verified Pro',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isFemale ? const Color(0xFFF472B6) : AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+                    child: Column(
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.star, color: Color(0xFFF59E0B), size: 16),
+                            SizedBox(width: 4),
+                            Text('RATING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${ratingAvg.toStringAsFixed(1)} ★',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFF59E0B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+                    child: Column(
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.work_history, color: AppColors.primary, size: 16),
+                            SizedBox(width: 4),
+                            Text('JOBS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$jobsCount Done',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+                    child: Column(
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.near_me, color: AppColors.successGreen, size: 16),
+                            SizedBox(width: 4),
+                            Text('DISTANCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${distance.toStringAsFixed(1)} km',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.successGreen),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.successGreenSoft,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.successGreen.withAlpha(60)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.verified_user, color: AppColors.successGreen, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Identity, Face Verification & Police Background Check Completed.',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.successGreen),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+              child: Column(
+                children: [
+                  _chargeRow('Base Service Rate', '₹${basePrice.toStringAsFixed(0)}', Colors.white),
+                  const SizedBox(height: 6),
+                  _chargeRow('Travel Charge (${distance.toStringAsFixed(1)} km)', '₹${travelCharge.toStringAsFixed(0)}', AppColors.primary),
+                  const Divider(color: AppColors.border, height: 16),
+                  _chargeRow('Estimated Total', '₹${estTotal.toStringAsFixed(0)}', AppColors.successGreen, bold: true),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: const Color(0xFF0F172A),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.check_circle_rounded, size: 20),
+                label: const Text('SELECT THIS PROFESSIONAL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() => _selectedProId = proId);
+                  _updateEstimate();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _filterChip(String label, String value) {
     final isActive = _sortBy == value;
     return GestureDetector(
@@ -720,13 +1019,21 @@ class _BookingScreenState extends State<BookingScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary : AppColors.cardBg,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: isActive ? AppColors.primary : AppColors.border),
+          boxShadow: isActive ? [BoxShadow(color: AppColors.primary.withAlpha(60), blurRadius: 8, offset: const Offset(0, 2))] : [],
         ),
-        child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isActive ? Colors.white : AppColors.textMuted)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: isActive ? const Color(0xFF0F172A) : AppColors.textMuted,
+          ),
+        ),
       ),
     );
   }
