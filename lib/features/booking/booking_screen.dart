@@ -682,7 +682,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                   radius: 17,
                                   backgroundColor: isFemale ? const Color(0x33EC4899) : AppColors.primarySoft,
                                   backgroundImage: imgUrl != null ? NetworkImage(imgUrl) : null,
-                                  child: imgUrl == null ? Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 15)) : null,
+                                  child: imgUrl == null ? Icon(isFemale ? Icons.woman_rounded : Icons.person_rounded, color: isFemale ? const Color(0xFFF472B6) : AppColors.primary, size: 20) : null,
                                 ),
                                 if (isVerified)
                                   Positioned(
@@ -817,7 +817,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       radius: 32,
                       backgroundColor: isFemale ? const Color(0x33EC4899) : AppColors.primarySoft,
                       backgroundImage: imgUrl != null ? NetworkImage(imgUrl) : null,
-                      child: imgUrl == null ? Text(isFemale ? '👩' : '👨', style: const TextStyle(fontSize: 28)) : null,
+                      child: imgUrl == null ? Icon(isFemale ? Icons.woman_rounded : Icons.person_rounded, color: isFemale ? const Color(0xFFF472B6) : AppColors.primary, size: 34) : null,
                     ),
                     if (isVerified)
                       Positioned(
@@ -860,7 +860,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          isFemale ? '👩 Female Professional' : '👨 LUMO Verified Pro',
+                          isFemale ? 'Female Professional' : 'LUMO Verified Pro',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,

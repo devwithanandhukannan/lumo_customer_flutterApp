@@ -400,8 +400,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ? Image.network(
                                         imgUrl,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Center(
-                                          child: Text(svc['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 36)),
+                                        errorBuilder: (_, __, ___) => const Center(
+                                          child: Icon(Icons.build_rounded, color: AppColors.primary, size: 36),
                                         ),
                                         loadingBuilder: (_, child, progress) {
                                           if (progress == null) return child;
@@ -414,8 +414,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           );
                                         },
                                       )
-                                    : Center(
-                                        child: Text(svc['icon']?.toString() ?? '🔧', style: const TextStyle(fontSize: 38)),
+                                    : const Center(
+                                        child: Icon(Icons.build_rounded, color: AppColors.primary, size: 36),
                                       ),
                               ),
                               Positioned(
