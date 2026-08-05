@@ -229,59 +229,65 @@ class _HomeScreenState extends State<HomeScreen> {
             // Interactive Location Bar Header
             Container(
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-              child: GestureDetector(
+              child: AppGlassCard(
                 onTap: _openLocationPicker,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.primary.withAlpha(60)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on, color: AppColors.emergencyRed, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('SERVICE LOCATION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted, letterSpacing: 0.8)),
-                            const SizedBox(height: 2),
-                            Text(
-                              _activeAddress,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                borderRadius: 18,
+                borderColor: AppColors.glassBorderBright,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.emergencyRedSoft,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(12)),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                            SizedBox(width: 4),
-                            Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
-                          ],
-                        ),
+                      child: const Icon(Icons.location_on_rounded, color: AppColors.emergencyRed, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('SERVICE LOCATION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.primaryLight, letterSpacing: 0.8)),
+                          const SizedBox(height: 2),
+                          Text(
+                            _activeAddress,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 20),
-                        onPressed: () async {
-                          await _loadCategories();
-                          await _loadAllServices();
-                          if (_selectedCategoryId != null) await _selectCategory(_selectedCategoryId!);
-                        },
-                        tooltip: 'Refresh Services',
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.glassBorder),
                       ),
-                    ],
-                  ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                          SizedBox(width: 4),
+                          Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 20),
+                      onPressed: () async {
+                        await _loadCategories();
+                        await _loadAllServices();
+                        if (_selectedCategoryId != null) await _selectCategory(_selectedCategoryId!);
+                      },
+                      tooltip: 'Refresh Services',
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -289,342 +295,319 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_activeSuspension != null)
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.red.withAlpha(40),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.redAccent.withAlpha(120)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _activeSuspension!['title'] ?? 'Emergency Service Closure',
-                                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _activeSuspension!['message'] ?? 'Service paused in this region.',
-                                style: const TextStyle(color: Colors.white70, fontSize: 11),
-                                maxLines: 2,
+                child: AppGlassCard(
+                  padding: const EdgeInsets.all(14),
+                  gradientColors: const [Color(0x33EF4444), Color(0x10EF4444)],
+                  borderColor: AppColors.emergencyRedBorder,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _activeSuspension!['title'] ?? 'Emergency Service Closure',
+                                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _activeSuspension!['message'] ?? 'Service paused in this region.',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withAlpha(100),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.redAccent.withAlpha(60)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on_rounded, color: Color(0xFF34D399), size: 14),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Location: ${_activeSuspension!['areaName'] ?? 'Fenced Area'}',
+                                style: const TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.bold),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(100),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.redAccent.withAlpha(60)),
                       ),
-                      child: Row(
+                      const SizedBox(height: 6),
+                      Row(
                         children: [
-                          const Icon(Icons.location_on_rounded, color: Color(0xFF34D399), size: 14),
+                          const Icon(Icons.access_time_rounded, color: Colors.amberAccent, size: 14),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'Location: ${_activeSuspension!['areaName'] ?? 'Fenced Area'}',
-                              style: const TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.bold),
+                              'Service Resumption: ${_formatExpiry(_activeSuspension!['expiresAt'])}',
+                              style: const TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w700),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time_rounded, color: Colors.amberAccent, size: 14),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Service Resumption: ${_formatExpiry(_activeSuspension!['expiresAt'])}',
-                            style: const TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
             // Search input
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (val) => setState(() => _searchQuery = val),
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Search for home services (e.g. Plumbing, Cleaning)',
-              hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-              prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 20),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, color: AppColors.textMuted, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.cardBg,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary)),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-        // Safety preference
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(26),
-                  borderRadius: BorderRadius.circular(10),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: lumoInputDecoration(
+                  hint: 'Search home services (e.g. Plumbing, Cleaning)',
+                  prefix: const Icon(Icons.search_rounded, color: AppColors.primary, size: 22),
+                  suffix: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, color: AppColors.textMuted, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
                 ),
-                child: const Icon(Icons.verified_user, color: AppColors.primary, size: 20),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+
+            const SizedBox(height: 16),
+            // Safety preference
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: AppGlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                borderRadius: 18,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        const Text('Female Pro Preferred', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13)),
-                        const Spacer(),
-                        Switch(
-                          value: _femaleProPreferred,
-                          activeTrackColor: AppColors.primary,
-                          activeThumbColor: Colors.white,
-                          onChanged: (v) => setState(() => _femaleProPreferred = v),
-                        ),
-                      ],
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.glassBorder),
+                      ),
+                      child: const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 20),
                     ),
-                    const Text('Police-verified female pros for female customers', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text('Female Pro Preferred', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 13)),
+                              const Spacer(),
+                              Switch(
+                                value: _femaleProPreferred,
+                                activeTrackColor: AppColors.primary,
+                                activeThumbColor: const Color(0xFF0F172A),
+                                onChanged: (v) => setState(() => _femaleProPreferred = v),
+                              ),
+                            ],
+                          ),
+                          const Text('Police-verified female pros for female customers', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
+            ),
+
+            const SizedBox(height: 20),
+            if (_searchQuery.isEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Service Categories', style: AppText.heading3),
+              ),
+              const SizedBox(height: 12),
+
+              if (_loadingCategories)
+                const Center(child: CircularProgressIndicator(color: AppColors.primary))
+              else
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _categories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) {
+                      final cat = _categories[i];
+                      final isSelected = _selectedCategoryId == cat['id']?.toString();
+                      return AppGlassChip(
+                        label: cat['name']?.toString() ?? '',
+                        isSelected: isSelected,
+                        onTap: () => _selectCategory(cat['id']?.toString() ?? ''),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 16),
             ],
-          ),
-        ),
 
-        const SizedBox(height: 20),
-        if (_searchQuery.isEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Service Categories', style: AppText.heading3),
-          ),
-          const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(_searchQuery.isNotEmpty ? 'Search Results (${_displayedServices.length})' : 'Available Services', style: AppText.heading3),
+            ),
+            const SizedBox(height: 12),
 
-          if (_loadingCategories)
-            const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          else
-            SizedBox(
-              height: 44,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
+            if (_loadingServices)
+              const Center(child: CircularProgressIndicator(color: AppColors.primary))
+            else if (_displayedServices.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(
+                  child: Text('No services found.', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                ),
+              )
+            else
+              Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final cat = _categories[i];
-                  final isSelected = _selectedCategoryId == cat['id']?.toString();
-                  return GestureDetector(
-                    onTap: () => _selectCategory(cat['id']?.toString() ?? ''),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : AppColors.cardBg,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
-                      ),
-                      child: Text(cat['name']?.toString() ?? '', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppColors.textMuted)),
-                    ),
-                  );
-                },
-              ),
-            ),
-          const SizedBox(height: 16),
-        ],
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: 0.76,
+                  ),
+                  itemCount: _displayedServices.length,
+                  itemBuilder: (_, i) {
+                    final svc = _displayedServices[i];
+                    final rawImg = svc['image_url']?.toString();
+                    final imgUrl = (rawImg != null && rawImg.isNotEmpty)
+                        ? (rawImg.startsWith('http') ? rawImg : '${ApiClient.baseUrl}$rawImg')
+                        : null;
+                    final duration = svc['duration_minutes']?.toString() ?? '60';
 
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(_searchQuery.isNotEmpty ? 'Search Results (${_displayedServices.length})' : 'Available Services', style: AppText.heading3),
-        ),
-        const SizedBox(height: 12),
-
-        if (_loadingServices)
-          const Center(child: CircularProgressIndicator(color: AppColors.primary))
-        else if (_displayedServices.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(
-              child: Text('No services found.', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 14,
-                crossAxisSpacing: 14,
-                childAspectRatio: 0.76,
-              ),
-              itemCount: _displayedServices.length,
-              itemBuilder: (_, i) {
-                final svc = _displayedServices[i];
-                final rawImg = svc['image_url']?.toString();
-                final imgUrl = (rawImg != null && rawImg.isNotEmpty)
-                    ? (rawImg.startsWith('http') ? rawImg : '${ApiClient.baseUrl}$rawImg')
-                    : null;
-                final duration = svc['duration_minutes']?.toString() ?? '60';
-
-                return GestureDetector(
-                  onTap: () => _openBooking(svc),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Top 1:1 AspectRatio Image Container (Blinkit Square Style)
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              Container(
-                                color: const Color(0xFF1E293B),
-                                width: double.infinity,
-                                height: double.infinity,
-                                child: imgUrl != null
-                                    ? Image.network(
-                                        imgUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Center(
+                    return AppGlassCard(
+                      padding: EdgeInsets.zero,
+                      borderRadius: 18,
+                      onTap: () => _openBooking(svc),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                Container(
+                                  color: const Color(0xFF1E293B),
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  child: imgUrl != null
+                                      ? Image.network(
+                                          imgUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const Center(
+                                            child: Icon(Icons.build_rounded, color: AppColors.primary, size: 36),
+                                          ),
+                                          loadingBuilder: (_, child, progress) {
+                                            if (progress == null) return child;
+                                            return const Center(
+                                              child: SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : const Center(
                                           child: Icon(Icons.build_rounded, color: AppColors.primary, size: 36),
                                         ),
-                                        loadingBuilder: (_, child, progress) {
-                                          if (progress == null) return child;
-                                          return const Center(
-                                            child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : const Center(
-                                        child: Icon(Icons.build_rounded, color: AppColors.primary, size: 36),
-                                      ),
-                              ),
-                              Positioned(
-                                top: 8,
-                                left: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withAlpha(160),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${duration}m',
-                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withAlpha(180),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppColors.glassBorder),
+                                    ),
+                                    child: Text(
+                                      '${duration}m',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        // Bottom Content
-                        Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                svc['name']?.toString() ?? '',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13, height: 1.2),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '₹${svc['base_price']}',
-                                    style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 14),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.successGreen.withAlpha(30),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: AppColors.successGreen, width: 1.5),
+                          Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  svc['name']?.toString() ?? '',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13, height: 1.2),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '₹${svc['base_price']}',
+                                      style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 14),
                                     ),
-                                    child: const Text(
-                                      'ADD +',
-                                      style: TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primarySoft,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: AppColors.primary, width: 1.2),
+                                      ),
+                                      child: const Text(
+                                        'BOOK',
+                                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        const SizedBox(height: 100),
-      ],
-    ),
-  ),
-);
-}
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 100),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 

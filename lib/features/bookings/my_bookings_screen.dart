@@ -293,11 +293,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
-          title: const Text('My Bookings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          backgroundColor: Colors.transparent,
+          title: const Text('My Bookings', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white)),
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
               onPressed: _load,
               tooltip: 'Refresh Bookings',
             ),
@@ -307,7 +307,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             indicatorWeight: 3,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textMuted,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             tabs: [
               Tab(
                 child: Row(
@@ -315,7 +315,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   children: [
                     const Icon(Icons.bolt_rounded, size: 18),
                     const SizedBox(width: 6),
-                    Text('⚡ Live & Active (${_activeBookings.length})'),
+                    Text('Active (${_activeBookings.length})'),
                   ],
                 ),
               ),
@@ -325,7 +325,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   children: [
                     const Icon(Icons.history_rounded, size: 18),
                     const SizedBox(width: 6),
-                    Text('📜 History (${_historyBookings.length})'),
+                    Text('History (${_historyBookings.length})'),
                   ],
                 ),
               ),
@@ -423,184 +423,153 @@ class _BookingCard extends StatelessWidget {
         statusIcon = Icons.info_outline_rounded;
     }
 
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: isActive ? 4 : 1,
-      color: AppColors.cardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isActive ? statusColor.withAlpha(120) : AppColors.border,
-          width: isActive ? 1.5 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppGlassCard(
+      onTap: onTap,
+      borderColor: isActive ? statusColor.withAlpha(140) : AppColors.glassBorder,
+      borderWidth: isActive ? 1.5 : 1.0,
+      borderRadius: 20,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              // Header Row: Service Icon, Name, Date, Amount, Status Badge
-              Row(
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: statusColor.withAlpha(24), borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.home_repair_service_rounded, color: statusColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      booking['service_name']?.toString() ?? 'Service',
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      booking['scheduled_at']?.toString() ?? '',
+                      style: AppText.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(color: statusColor.withAlpha(24), borderRadius: BorderRadius.circular(14)),
-                    child: Icon(Icons.home_repair_service_rounded, color: statusColor, size: 22),
+                  Text(
+                    '₹${booking['total_amount']}',
+                    style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 16),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: statusColor.withAlpha(80)),
+                    ),
+                    child: Row(
                       children: [
+                        Icon(statusIcon, size: 10, color: statusColor),
+                        const SizedBox(width: 4),
                         Text(
-                          booking['service_name']?.toString() ?? 'Service',
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 15),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          booking['scheduled_at']?.toString() ?? '',
-                          style: AppText.caption,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          statusDisplayText,
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: statusColor),
                         ),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${booking['total_amount']}',
-                        style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: statusColor.withAlpha(25),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: statusColor.withAlpha(80)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(statusIcon, size: 10, color: statusColor),
-                            const SizedBox(width: 4),
-                            Text(
-                              statusDisplayText,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: statusColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              // Assigned Professional snippet
-              if (proName != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.primary.withAlpha(40)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.person_rounded, color: Colors.white, size: 16),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(proName.toString(), style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 12)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified_rounded, color: AppColors.primary, size: 12),
-                              ],
-                            ),
-                            if (proRating != null) Text('⭐ $proRating · Verified Professional', style: AppText.caption),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 14),
-
-              // Interactive Action Bar
-              Row(
-                children: [
-                  // Primary Action Button
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isActive ? AppColors.primary : AppColors.surface,
-                        foregroundColor: isActive ? const Color(0xFF0F121A) : Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: isActive ? 2 : 0,
-                      ),
-                      icon: Icon(
-                        isActive ? Icons.sensors_rounded : Icons.info_outline_rounded,
-                        size: 16,
-                        color: isActive ? const Color(0xFF0F121A) : Colors.white,
-                      ),
-                      label: Text(
-                        isActive
-                            ? (status == 'ACCEPTED_PAYMENT_PENDING' ? 'PAY PLATFORM FEE & TRACK' : 'OPEN TELEMETRY & TRACK')
-                            : 'VIEW DETAILS',
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: isActive ? const Color(0xFF0F121A) : Colors.white, letterSpacing: 0.3),
-                      ),
-                    ),
-                  ),
-
-                  // Optional Cancel / Report buttons
-                  if (onCancel != null) ...[
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: onCancel,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.emergencyRed,
-                        side: BorderSide(color: AppColors.emergencyRed.withAlpha(80)),
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.cancel_outlined, size: 16),
-                      label: const Text('Cancel', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-
-                  const SizedBox(width: 8),
-
-                  IconButton(
-                    onPressed: onReport,
-                    tooltip: 'Report Issue',
-                    icon: const Icon(Icons.flag_outlined, color: AppColors.textMuted, size: 20),
                   ),
                 ],
               ),
             ],
           ),
-        ),
+
+          if (proName != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withAlpha(40)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.person_rounded, color: Color(0xFF0F172A), size: 16),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(proName.toString(), style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 12)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.verified_rounded, color: AppColors.primary, size: 12),
+                          ],
+                        ),
+                        if (proRating != null) Text('⭐ $proRating · Verified Professional', style: AppText.caption),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              Expanded(
+                child: AppGradientButton(
+                  height: 42,
+                  label: isActive
+                      ? (status == 'ACCEPTED_PAYMENT_PENDING' ? 'PAY PLATFORM FEE & TRACK' : 'TRACK LIVE')
+                      : 'VIEW DETAILS',
+                  onTap: onTap,
+                  icon: isActive ? Icons.sensors_rounded : Icons.info_outline_rounded,
+                ),
+              ),
+
+              if (onCancel != null) ...[
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: onCancel,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.emergencyRed,
+                    side: BorderSide(color: AppColors.emergencyRed.withAlpha(80)),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.cancel_outlined, size: 16),
+                  label: const Text('Cancel', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+
+              const SizedBox(width: 8),
+
+              IconButton(
+                onPressed: onReport,
+                tooltip: 'Report Issue',
+                icon: const Icon(Icons.flag_outlined, color: AppColors.textMuted, size: 20),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

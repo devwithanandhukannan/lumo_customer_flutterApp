@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/storage/session_storage.dart';
@@ -7,7 +8,6 @@ import 'features/auth/customer_profile_setup_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/bookings/my_bookings_screen.dart';
 import 'features/profile/profile_screen.dart';
-import 'features/profile/settings_screen.dart';
 import 'features/safety/sos_button_widget.dart';
 
 Future<void> main() async {
@@ -70,7 +70,6 @@ class _AuthGateState extends State<_AuthGate> {
     try {
       final user = await ApiClient.getMe();
       if (user == null || user['id'] == null || user['isActive'] == false) {
-        // User does not exist in database or is disabled — purge local storage completely!
         await SessionStorage.clearSession();
         if (mounted) {
           setState(() {
@@ -98,7 +97,6 @@ class _AuthGateState extends State<_AuthGate> {
   }
 
   void _onLoginSuccess() {
-    // After OTP verified — check if profile is already complete
     if (mounted) {
       setState(() {
         _isAuthenticated = true;
@@ -130,7 +128,6 @@ class _AuthGateState extends State<_AuthGate> {
     if (!_isAuthenticated!) {
       return AuthScreen(onLoginSuccess: _onLoginSuccess);
     }
-    // First-time registration — show profile completion
     if (!_profileComplete) {
       return CustomerProfileSetupScreen(onCompleted: _onProfileComplete);
     }
@@ -155,7 +152,6 @@ class _MainAppShellState extends State<MainAppShell> {
       const _HomeTab(),
       const MyBookingsScreen(),
       ProfileScreen(onLogout: widget.onLogout),
-      SettingsScreen(onLogout: widget.onLogout),
     ];
 
     return Scaffold(
@@ -182,53 +178,69 @@ class _HomeTab extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.transparent,
         titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.shield_rounded, color: Color(0xFF0F172A), size: 18),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('LUMO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
-                Text(
-                  SessionStorage.userName.isNotEmpty ? 'Hello, ${SessionStorage.userName.split(' ').first}!' : 'Home Services',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0x1AFFFFFF),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.glassBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primary.withAlpha(80), blurRadius: 10, offset: const Offset(0, 3)),
+                  ],
                 ),
-              ],
-            ),
-          ],
+                child: const Icon(Icons.shield_rounded, color: Color(0xFF0F172A), size: 18),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('LUMO', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.2)),
+                  Text(
+                    SessionStorage.userName.isNotEmpty ? 'Hello, ${SessionStorage.userName.split(' ').first}!' : 'Home Services',
+                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.successGreenSoft,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.successGreen.withAlpha(60)),
+              border: Border.all(color: AppColors.successGreen.withAlpha(80)),
+              boxShadow: [
+                BoxShadow(color: AppColors.successGreen.withAlpha(40), blurRadius: 8, offset: const Offset(0, 2)),
+              ],
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.verified_user, color: AppColors.successGreen, size: 12),
+                Icon(Icons.verified_user_rounded, color: AppColors.successGreen, size: 14),
                 SizedBox(width: 4),
-                Text('SAFE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.successGreen)),
+                Text('SAFE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.successGreen, letterSpacing: 0.5)),
               ],
             ),
           ),
         ],
       ),
       body: const Padding(
-        padding: EdgeInsets.only(top: 16),
+        padding: EdgeInsets.only(top: 8),
         child: HomeScreen(),
       ),
     );
@@ -244,19 +256,34 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', isSelected: currentIndex == 0, onTap: () => onTap(0)),
-            _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Bookings', isSelected: currentIndex == 1, onTap: () => onTap(1)),
-            _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profile', isSelected: currentIndex == 2, onTap: () => onTap(2)),
-            _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Settings', isSelected: currentIndex == 3, onTap: () => onTap(3)),
-          ],
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      height: 72,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0x2EFFFFFF), Color(0x12FFFFFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.glassBorderBright, width: 1.2),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withAlpha(80), blurRadius: 20, offset: const Offset(0, 8)),
+              ],
+            ),
+            child: Row(
+              children: [
+                _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', isSelected: currentIndex == 0, onTap: () => onTap(0)),
+                _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Bookings', isSelected: currentIndex == 1, onTap: () => onTap(1)),
+                _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profile & Settings', isSelected: currentIndex == 2, onTap: () => onTap(2)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -277,14 +304,36 @@ class _NavItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primarySoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? AppColors.primary.withAlpha(120) : Colors.transparent,
+              width: 1,
+            ),
+          ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(isSelected ? activeIcon : icon, color: isSelected ? AppColors.primary : AppColors.textMuted, size: 24),
-              const SizedBox(height: 4),
-              Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400, color: isSelected ? AppColors.primary : AppColors.textMuted)),
+              Icon(
+                isSelected ? activeIcon : icon,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+                size: 22,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
             ],
           ),
         ),
