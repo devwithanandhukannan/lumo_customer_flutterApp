@@ -8,6 +8,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/haptic_service.dart';
 
 class TrackingScreen extends StatefulWidget {
   final String bookingId;
@@ -125,6 +126,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
         final finalProLng = proLng ?? (finalCustLng - 0.003);
 
         if (mounted) {
+          if (_currentStatus.toUpperCase() == 'REQUESTED' && newStatus.toUpperCase() == 'ACCEPTED') {
+            HapticService.proAcceptedBooking();
+          }
+
           setState(() {
             _currentStatus = newStatus;
             _startOtp = sOtp;
@@ -739,19 +744,21 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: _payingRazorpay ? null : _handlePayPlatformFee,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
+                          foregroundColor: const Color(0xFF0F121A),
+                          elevation: 3,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         icon: _payingRazorpay
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Icon(Icons.payment, size: 18),
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Color(0xFF0F121A), strokeWidth: 2.5))
+                            : const Icon(Icons.payment, size: 20, color: Color(0xFF0F121A)),
                         label: Text(
                           _payingRazorpay ? 'PROCESSING...' : 'PAY PLATFORM FEE (₹$_platformFee) VIA RAZORPAY',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFF0F121A), letterSpacing: 0.5),
                         ),
                       ),
                     ),
@@ -790,19 +797,21 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: _payingRazorpay ? null : _handlePayBalance,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.successGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 3,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         icon: _payingRazorpay
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Icon(Icons.account_balance_wallet, size: 18),
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                            : const Icon(Icons.account_balance_wallet, size: 20, color: Colors.white),
                         label: Text(
                           _payingRazorpay ? 'PROCESSING...' : 'PAY BALANCE (₹$_balanceAmount) VIA RAZORPAY',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.white, letterSpacing: 0.5),
                         ),
                       ),
                     ),

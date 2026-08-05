@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'smooth_animations.dart';
 
 class AppColors {
   // Premium Warm Yellow-White Theme Foundation
@@ -105,7 +106,7 @@ class AppGlassCard extends StatelessWidget {
         ),
       ),
     );
-    if (onTap != null) return GestureDetector(onTap: onTap, child: content);
+    if (onTap != null) return AppBounceTap(onTap: onTap, child: content);
     return content;
   }
 }
@@ -131,7 +132,7 @@ class AppGradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppBounceTap(
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -170,6 +171,13 @@ class AppTheme {
         error: AppColors.emergencyRed,
         onPrimary: Color(0xFF0F172A),
         onSurface: AppColors.textPrimary,
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: LumoPageTransitionsBuilder(),
+          TargetPlatform.iOS: LumoPageTransitionsBuilder(),
+          TargetPlatform.macOS: LumoPageTransitionsBuilder(),
+        },
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,

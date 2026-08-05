@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/haptic_service.dart';
 import '../location/location_picker_modal.dart';
 import '../tracking/tracking_screen.dart';
 
@@ -301,6 +302,7 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Future<void> _confirmBooking() async {
+    HapticService.bookingSubmitted();
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a service location')));
       return;

@@ -32,9 +32,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     }
   }
 
-  bool _isActiveStatus(String status) {
+  bool _isActiveStatus(String status, String? scheduledAtStr) {
     final s = status.toUpperCase();
-    return s == 'REQUESTED' ||
+    final isStatusActive = s == 'REQUESTED' ||
         s == 'ACCEPTED' ||
         s == 'ACCEPTED_PAYMENT_PENDING' ||
         s == 'CONFIRMED' ||
@@ -42,13 +42,29 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         s == 'ARRIVED' ||
         s == 'IN_PROGRESS' ||
         s == 'START_OTP_VERIFIED';
+
+    if (!isStatusActive) return false;
+
+    // Filter out stale abandoned bookings (> 24h old that are not actively in progress)
+    if (s != 'IN_PROGRESS' && s != 'START_OTP_VERIFIED' && scheduledAtStr != null && scheduledAtStr.isNotEmpty) {
+      try {
+        final scheduledDate = DateTime.parse(scheduledAtStr);
+        if (DateTime.now().difference(scheduledDate).inHours > 24) {
+          return false; // Move stale abandoned booking to History tab
+        }
+      } catch (_) {}
+    }
+
+    return true;
   }
 
-  List<dynamic> get _activeBookings =>
-      _bookings.where((b) => _isActiveStatus((b['status'] ?? '').toString())).toList();
+  List<dynamic> get _activeBookings => _bookings
+      .where((b) => _isActiveStatus((b['status'] ?? '').toString(), b['scheduled_at']?.toString() ?? b['created_at']?.toString()))
+      .toList();
 
-  List<dynamic> get _historyBookings =>
-      _bookings.where((b) => !_isActiveStatus((b['status'] ?? '').toString())).toList();
+  List<dynamic> get _historyBookings => _bookings
+      .where((b) => !_isActiveStatus((b['status'] ?? '').toString(), b['scheduled_at']?.toString() ?? b['created_at']?.toString()))
+      .toList();
 
   void _openTrackingScreen(Map<String, dynamic> b) {
     final status = (b['status'] ?? 'REQUESTED').toString().toUpperCase();
@@ -538,20 +554,21 @@ class _BookingCard extends StatelessWidget {
                       onPressed: onTap,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isActive ? AppColors.primary : AppColors.surface,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        foregroundColor: isActive ? const Color(0xFF0F121A) : Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: isActive ? 2 : 0,
                       ),
                       icon: Icon(
                         isActive ? Icons.sensors_rounded : Icons.info_outline_rounded,
                         size: 16,
+                        color: isActive ? const Color(0xFF0F121A) : Colors.white,
                       ),
                       label: Text(
                         isActive
                             ? (status == 'ACCEPTED_PAYMENT_PENDING' ? 'PAY PLATFORM FEE & TRACK' : 'OPEN TELEMETRY & TRACK')
                             : 'VIEW DETAILS',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: isActive ? const Color(0xFF0F121A) : Colors.white, letterSpacing: 0.3),
                       ),
                     ),
                   ),
