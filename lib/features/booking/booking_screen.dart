@@ -46,11 +46,39 @@ class _BookingScreenState extends State<BookingScreen> {
   double? _totalAmount;
   double? _kmCharge;
 
+  Map<String, dynamic>? _activeSuspension;
+
+  Future<void> _checkSuspensionForLocation() async {
+    try {
+      final res = await ApiClient.checkServiceSuspension(
+        latitude: _lat,
+        longitude: _lng,
+        locationName: _addressController.text,
+      );
+      if (mounted) {
+        setState(() => _activeSuspension = res);
+      }
+    } catch (_) {}
+  }
+
+  String _formatExpiry(dynamic expiresAt) {
+    if (expiresAt == null || expiresAt.toString().isEmpty) return 'Indefinite (Until further notice)';
+    try {
+      final dt = DateTime.parse(expiresAt.toString()).toLocal();
+      final hourStr = dt.hour > 12 ? (dt.hour - 12) : (dt.hour == 0 ? 12 : dt.hour);
+      final amPm = dt.hour >= 12 ? 'PM' : 'AM';
+      return '${dt.day}/${dt.month}/${dt.year} at $hourStr:${dt.minute.toString().padLeft(2, '0')} $amPm';
+    } catch (_) {
+      return expiresAt.toString();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _femaleProPreferred = widget.femaleProPreferred;
     _basePrice = double.tryParse(widget.service['base_price']?.toString() ?? '0');
+    _checkSuspensionForLocation();
     _loadProsForLocation();
     _useLiveLocation(silent: true);
   }
@@ -246,6 +274,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   // Update 3 & 6: Load available professionals for this service and location
   Future<void> _loadProsForLocation() async {
+    _checkSuspensionForLocation();
     setState(() { _loadingPros = true; _checkingAvailability = true; });
     try {
       final serviceId = widget.service['id']?.toString() ?? '';
@@ -316,6 +345,48 @@ class _BookingScreenState extends State<BookingScreen> {
 
     setState(() => _isBooking = true);
     try {
+      final liveCheck = await ApiClient.checkServiceSuspension(
+        latitude: _lat,
+        longitude: _lng,
+        locationName: _addressController.text,
+      );
+      if (liveCheck != null && (liveCheck['severity'] == 'FULL_BLACKOUT' || liveCheck['severity'] == null)) {
+        setState(() {
+          _activeSuspension = liveCheck;
+          _isBooking = false;
+        });
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Emergency Service Blackout', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              content: Text(
+                liveCheck['message'] ?? 'Service is currently paused in your area due to emergency blackout rules.',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK, Got It', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
       final res = await ApiClient.createBooking(
         serviceId: widget.service['id']?.toString() ?? '',
         scheduledAt: DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
@@ -519,25 +590,103 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             const SizedBox(height: 28),
 
+            if (_activeSuspension != null && (_activeSuspension!['severity'] == 'FULL_BLACKOUT' || _activeSuspension!['severity'] == null))
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(40),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.redAccent.withAlpha(140)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _activeSuspension!['title'] ?? 'Emergency Service Blackout Active',
+                                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _activeSuspension!['message'] ?? 'Service is temporarily paused in this location due to emergency blackout rules.',
+                                style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(120),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.redAccent.withAlpha(70)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: Color(0xFF34D399), size: 15),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Location: ${_activeSuspension!['areaName'] ?? 'Fenced Blackout Zone'}',
+                              style: const TextStyle(color: Color(0xFF34D399), fontSize: 12, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded, color: Colors.amberAccent, size: 15),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Service Resumption: ${_formatExpiry(_activeSuspension!['expiresAt'])}',
+                            style: const TextStyle(color: Colors.amberAccent, fontSize: 12, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
             SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: (_isBooking || !_hasAvailablePros || _checkingAvailability || _loadingPros) ? null : _confirmBooking,
+                onPressed: (_isBooking || !_hasAvailablePros || _checkingAvailability || _loadingPros || (_activeSuspension != null && _activeSuspension!['severity'] == 'FULL_BLACKOUT')) ? null : _confirmBooking,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _hasAvailablePros ? AppColors.successGreen : Colors.grey.shade800,
+                  backgroundColor: (_hasAvailablePros && _activeSuspension == null) ? AppColors.successGreen : Colors.grey.shade800,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: _isBooking || _checkingAvailability
                     ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                     : Text(
-                        _hasAvailablePros
-                            ? (_totalAmount != null ? 'CONFIRM BOOKING · ₹${_totalAmount!.toStringAsFixed(0)}' : 'CONFIRM BOOKING')
-                            : 'NO PROFESSIONALS IN YOUR AREA',
+                        _activeSuspension != null && _activeSuspension!['severity'] == 'FULL_BLACKOUT'
+                            ? 'SERVICE PAUSED (EMERGENCY BLACKOUT)'
+                            : (_hasAvailablePros
+                                ? (_totalAmount != null ? 'CONFIRM BOOKING · ₹${_totalAmount!.toStringAsFixed(0)}' : 'CONFIRM BOOKING')
+                                : 'NO PROFESSIONALS IN YOUR AREA'),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                           letterSpacing: 0.8,
-                          color: _hasAvailablePros ? Colors.white : AppColors.textMuted,
+                          color: (_hasAvailablePros && _activeSuspension == null) ? Colors.white : AppColors.textMuted,
                         ),
                       ),
               ),

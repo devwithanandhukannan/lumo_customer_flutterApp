@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _activeAddress = SessionStorage.activeAddress;
   double _activeLat = SessionStorage.activeLat;
   double _activeLng = SessionStorage.activeLng;
+  Map<String, dynamic>? _activeSuspension;
 
   @override
   void initState() {
@@ -35,10 +36,31 @@ class _HomeScreenState extends State<HomeScreen> {
     _activeLng = SessionStorage.activeLng;
     _loadCategories();
     _loadAllServices();
-    // Update 4: Auto-enable female protection for female customers
-    // Update 4: Auto-enable female protection for female customers
+    _checkSuspension();
     final customerSex = SessionStorage.sex.toUpperCase();
     _femaleProPreferred = (customerSex == 'FEMALE');
+  }
+
+  Future<void> _checkSuspension() async {
+    final suspension = await ApiClient.checkServiceSuspension(
+      latitude: _activeLat,
+      longitude: _activeLng,
+    );
+    if (mounted) {
+      setState(() => _activeSuspension = suspension);
+    }
+  }
+
+  String _formatExpiry(dynamic expiresAt) {
+    if (expiresAt == null || expiresAt.toString().isEmpty) return 'Indefinite (Until further notice)';
+    try {
+      final dt = DateTime.parse(expiresAt.toString()).toLocal();
+      final hourStr = dt.hour > 12 ? (dt.hour - 12) : (dt.hour == 0 ? 12 : dt.hour);
+      final amPm = dt.hour >= 12 ? 'PM' : 'AM';
+      return '${dt.day}/${dt.month}/${dt.year} at $hourStr:${dt.minute.toString().padLeft(2, '0')} $amPm';
+    } catch (_) {
+      return expiresAt.toString();
+    }
   }
 
   @override
@@ -65,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _activeLng = lng;
             });
             _loadAllServices();
+            _checkSuspension();
             if (_selectedCategoryId != null) _selectCategory(_selectedCategoryId!);
           }
         },
@@ -128,6 +151,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openBooking(Map<String, dynamic> service) {
+    if (_activeSuspension != null && _activeSuspension!['severity'] == 'FULL_BLACKOUT') {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Service Temporarily Closed',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            _activeSuspension!['message'] ?? 'Service is currently paused in your area due to emergency conditions.',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Understand', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final isAvailable = service['is_available'] ?? true;
     final prosCount = (service['available_pros_count'] as num?)?.toInt() ?? 1;
 
@@ -159,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.surface,
       onRefresh: () async {
         await _loadCategories();
+        await _checkSuspension();
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -224,6 +285,84 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+
+            if (_activeSuspension != null)
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(40),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.redAccent.withAlpha(120)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _activeSuspension!['title'] ?? 'Emergency Service Closure',
+                                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _activeSuspension!['message'] ?? 'Service paused in this region.',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(100),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.redAccent.withAlpha(60)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: Color(0xFF34D399), size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Location: ${_activeSuspension!['areaName'] ?? 'Fenced Area'}',
+                              style: const TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded, color: Colors.amberAccent, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Service Resumption: ${_formatExpiry(_activeSuspension!['expiresAt'])}',
+                            style: const TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
             // Search input
         Container(

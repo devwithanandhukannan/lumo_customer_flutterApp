@@ -456,4 +456,34 @@ class ApiClient {
     if (res.statusCode == 200 || res.statusCode == 201) return body['data'] ?? body;
     throw Exception(body['message'] ?? 'Failed to verify balance payment');
   }
+
+  // ─── EMERGENCY SERVICE SUSPENSION API ───
+
+  static Future<Map<String, dynamic>?> checkServiceSuspension({
+    required double latitude,
+    required double longitude,
+    String? categoryId,
+    String? locationName,
+  }) async {
+    try {
+      final res = await _requestWithFallback((url) => http.post(
+        Uri.parse('$url/api/v1/geo/check-suspension'),
+        headers: _publicHeaders,
+        body: jsonEncode({
+          'latitude': latitude,
+          'longitude': longitude,
+          if (categoryId != null) 'categoryId': categoryId,
+          if (locationName != null) 'locationName': locationName,
+        }),
+      ));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body['isSuspended'] == true) {
+          return body['suspension'] ?? {};
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 }
+
