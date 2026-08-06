@@ -68,15 +68,21 @@ class SessionStorage {
   static const _keyAddress = 'user_address';
   static const _keyLat = 'user_lat';
   static const _keyLng = 'user_lng';
+  static const _keyThemeMode = 'theme_mode';
 
   static String get activeAddress => _prefs?.getString(_keyAddress) ?? 'Thottikkanam, Kerala, India';
   static double get activeLat => _prefs?.getDouble(_keyLat) ?? 9.9484;
   static double get activeLng => _prefs?.getDouble(_keyLng) ?? 77.1931;
+  static String get themeMode => _prefs?.getString(_keyThemeMode) ?? 'DARK';
 
   static Future<void> setLocation(String address, double lat, double lng) async {
     await _prefs?.setString(_keyAddress, address);
     await _prefs?.setDouble(_keyLat, lat);
     await _prefs?.setDouble(_keyLng, lng);
+  }
+
+  static Future<void> setThemeMode(String mode) async {
+    await _prefs?.setString(_keyThemeMode, mode);
   }
 
   static Future<void> clearSession() async {

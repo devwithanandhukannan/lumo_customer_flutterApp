@@ -15,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profile;
   bool _loading = true;
+  String _currentTheme = SessionStorage.themeMode;
 
   @override
   void initState() {
@@ -299,6 +300,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
 
                     const SizedBox(height: 24),
+                    const Text('APPEARANCE & THEME', style: AppText.label),
+                    const SizedBox(height: 10),
+
+                    AppGlassCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySoft,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  _currentTheme == 'LIGHT' ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('App Theme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                    Text('Switch between Dark Obsidian & Light Mode', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _ThemeChip(
+                                  label: 'Dark Mode',
+                                  icon: Icons.dark_mode_rounded,
+                                  isSelected: _currentTheme == 'DARK',
+                                  onTap: () async {
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    await SessionStorage.setThemeMode('DARK');
+                                    if (!mounted) return;
+                                    setState(() => _currentTheme = 'DARK');
+                                    messenger.showSnackBar(
+                                      const SnackBar(content: Text('Theme updated to Dark Mode'), duration: Duration(seconds: 1)),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _ThemeChip(
+                                  label: 'Light Mode',
+                                  icon: Icons.light_mode_rounded,
+                                  isSelected: _currentTheme == 'LIGHT',
+                                  onTap: () async {
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    await SessionStorage.setThemeMode('LIGHT');
+                                    if (!mounted) return;
+                                    setState(() => _currentTheme = 'LIGHT');
+                                    messenger.showSnackBar(
+                                      const SnackBar(content: Text('Theme updated to Light Mode'), duration: Duration(seconds: 1)),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
                     const Text('ACCOUNT SECURITY', style: AppText.label),
                     const SizedBox(height: 10),
 
@@ -433,6 +511,54 @@ class _SettingsRow extends StatelessWidget {
               ),
             ),
             const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primaryLight : AppColors.glassBorder,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? const Color(0xFF0F172A) : AppColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+              ),
+            ),
           ],
         ),
       ),
