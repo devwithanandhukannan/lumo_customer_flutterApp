@@ -35,10 +35,10 @@ class ApiClient {
   static String _defaultBaseUrl() {
     if (kIsWeb) return 'http://localhost:8000';
     try {
-      if (Platform.isAndroid) return 'http://192.168.1.4:8000';
-      if (Platform.isIOS) return 'http://192.168.1.4:8000';
+      if (Platform.isAndroid) return 'http://192.168.1.2:8000';
+      if (Platform.isIOS) return 'http://192.168.1.2:8000';
     } catch (_) {}
-    return 'http://192.168.1.4:8000';
+    return 'http://192.168.1.2:8000';
   }
 
   static String baseUrl = _defaultBaseUrl();
@@ -60,6 +60,7 @@ class ApiClient {
   ) async {
     final candidateUrls = <String>{
       baseUrl,
+      'http://192.168.1.2:8000',
       'http://192.168.1.4:8000',
       'http://192.168.1.6:8000',
       'http://192.168.1.3:8000',
