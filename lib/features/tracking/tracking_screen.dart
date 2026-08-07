@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -283,7 +284,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       );
 
       final orderId = (orderData['orderId'] ?? 'order_stage1_${DateTime.now().millisecondsSinceEpoch}').toString();
-      final keyId = (orderData['keyId'] ?? 'rzp_test_T7vwejiBDVEZv1').toString();
+      final keyId = (orderData['keyId'] ?? 'rzp_test_TMNBx4OauV0n2S').toString();
       final num rawAmount = (orderData['amount'] as num?) ?? (double.tryParse(_platformFee) ?? 50) * 100;
       _currentOrderId = orderId;
 
@@ -302,10 +303,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
         }
       };
 
-      try {
-        _razorpay.open(options);
-      } catch (_) {
+      if (kIsWeb) {
         await _openFallbackCheckoutModal(orderId: orderId, keyId: keyId, stage: 'PLATFORM_FEE');
+      } else {
+        try {
+          _razorpay.open(options);
+        } catch (e) {
+          if (mounted) {
+            setState(() => _payingRazorpay = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Payment checkout launch error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -328,7 +338,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       );
 
       final orderId = (orderData['orderId'] ?? 'order_stage2_${DateTime.now().millisecondsSinceEpoch}').toString();
-      final keyId = (orderData['keyId'] ?? 'rzp_test_T7vwejiBDVEZv1').toString();
+      final keyId = (orderData['keyId'] ?? 'rzp_test_TMNBx4OauV0n2S').toString();
       final num rawAmount = (orderData['amount'] as num?) ?? (double.tryParse(_balanceAmount) ?? 499) * 100;
       _currentOrderId = orderId;
 
@@ -347,10 +357,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
         }
       };
 
-      try {
-        _razorpay.open(options);
-      } catch (_) {
+      if (kIsWeb) {
         await _openFallbackCheckoutModal(orderId: orderId, keyId: keyId, stage: 'BALANCE');
+      } else {
+        try {
+          _razorpay.open(options);
+        } catch (e) {
+          if (mounted) {
+            setState(() => _payingRazorpay = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Payment checkout launch error: ${e.toString()}'), backgroundColor: AppColors.emergencyRed),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {

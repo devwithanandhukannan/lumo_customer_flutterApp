@@ -35,10 +35,10 @@ class ApiClient {
   static String _defaultBaseUrl() {
     if (kIsWeb) return 'http://localhost:8000';
     try {
-      if (Platform.isAndroid) return 'http://192.168.1.2:8000';
-      if (Platform.isIOS) return 'http://192.168.1.2:8000';
+      if (Platform.isAndroid) return 'http://192.168.1.3:8000';
+      if (Platform.isIOS) return 'http://192.168.1.3:8000';
     } catch (_) {}
-    return 'http://192.168.1.2:8000';
+    return 'http://192.168.1.3:8000';
   }
 
   static String baseUrl = _defaultBaseUrl();
@@ -60,10 +60,10 @@ class ApiClient {
   ) async {
     final candidateUrls = <String>{
       baseUrl,
+      'http://192.168.1.3:8000',
       'http://192.168.1.2:8000',
       'http://192.168.1.4:8000',
       'http://192.168.1.6:8000',
-      'http://192.168.1.3:8000',
       'http://192.168.1.8:8000',
       if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:8000',
       if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:5000',
@@ -485,6 +485,18 @@ class ApiClient {
       }
     } catch (_) {}
     return null;
+  }
+
+  // Update FCM Push Notification Device Token
+  static Future<void> updateFcmToken(String fcmToken) async {
+    try {
+      if (SessionStorage.authToken == null) return;
+      await _requestWithFallback((url) => http.post(
+        Uri.parse('$url/api/v1/users/fcm-token'),
+        headers: _authHeaders,
+        body: jsonEncode({'fcmToken': fcmToken}),
+      ));
+    } catch (_) {}
   }
 }
 

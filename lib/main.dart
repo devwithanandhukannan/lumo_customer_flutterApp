@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/storage/session_storage.dart';
+import 'core/services/notification_service.dart';
 import 'core/network/api_client.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/auth/customer_profile_setup_screen.dart';
@@ -13,6 +14,7 @@ import 'features/safety/sos_button_widget.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SessionStorage.init();
+  await NotificationService.initialize();
   runApp(const LumoCustomerApp());
 }
 
@@ -83,6 +85,7 @@ class _AuthGateState extends State<_AuthGate> {
             _isAuthenticated = true;
             _profileComplete = SessionStorage.isProfileComplete;
           });
+          NotificationService.syncFcmTokenAfterLogin();
         }
       }
     } catch (_) {
@@ -102,6 +105,7 @@ class _AuthGateState extends State<_AuthGate> {
         _isAuthenticated = true;
         _profileComplete = SessionStorage.isProfileComplete;
       });
+      NotificationService.getToken();
     }
   }
 

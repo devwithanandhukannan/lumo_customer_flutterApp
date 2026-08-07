@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "385700084800",
+    "project_id": "lumo-notification",
+    "storage_bucket": "lumo-notification.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385700084800:android:1f597301d77543476373a5",
+        "android_client_info": {
+          "package_name": "com.lumo.customer.customer_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_qDWQvN8p8iM7u2hgJ84yA97tGrWyn3k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

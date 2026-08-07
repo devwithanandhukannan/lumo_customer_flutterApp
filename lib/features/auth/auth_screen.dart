@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/session_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/notification_service.dart';
 
 class CountryRegion {
   final String code;
@@ -156,6 +157,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         email: user['email']?.toString(),
         isProfileComplete: profileComplete,
       );
+
+      // Sync FCM token now that auth token is saved — enables push notifications
+      await NotificationService.syncFcmTokenAfterLogin();
 
       if (mounted) widget.onLoginSuccess();
     } catch (e) {
