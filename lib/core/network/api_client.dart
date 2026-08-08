@@ -35,10 +35,10 @@ class ApiClient {
   static String _defaultBaseUrl() {
     if (kIsWeb) return 'http://localhost:8000';
     try {
-      if (Platform.isAndroid) return 'http://192.168.1.3:8000';
-      if (Platform.isIOS) return 'http://192.168.1.3:8000';
+      if (Platform.isAndroid) return 'http://192.168.1.9:8000';
+      if (Platform.isIOS) return 'http://192.168.1.9:8000';
     } catch (_) {}
-    return 'http://192.168.1.3:8000';
+    return 'http://192.168.1.9:8000';
   }
 
   static String baseUrl = _defaultBaseUrl();
@@ -60,11 +60,24 @@ class ApiClient {
   ) async {
     final candidateUrls = <String>{
       baseUrl,
+      'http://192.168.1.9:8000',
       'http://192.168.1.3:8000',
       'http://192.168.1.2:8000',
       'http://192.168.1.4:8000',
+      'http://192.168.1.5:8000',
       'http://192.168.1.6:8000',
+      'http://192.168.1.7:8000',
       'http://192.168.1.8:8000',
+      'http://192.168.1.10:8000',
+      'http://192.168.1.11:8000',
+      'http://192.168.1.12:8000',
+      'http://192.168.1.13:8000',
+      'http://192.168.1.14:8000',
+      'http://192.168.1.15:8000',
+      'http://192.168.0.9:8000',
+      'http://192.168.0.3:8000',
+      'http://192.168.0.2:8000',
+      'http://192.168.0.4:8000',
       if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:8000',
       if (!kIsWeb && Platform.isAndroid) 'http://10.0.2.2:5000',
       'http://127.0.0.1:8000',
@@ -89,7 +102,7 @@ class ApiClient {
           lastError.toString().contains('No route to host') ||
           lastError.toString().contains('TimeoutException')) {
         throw Exception(
-          'Backend API Gateway unreachable at $baseUrl. Ensure ./run-all.sh is running in backend directory and your phone is on the same Wi-Fi network.',
+          'Backend API Gateway unreachable at $baseUrl. Ensure ./run-all.sh is running in backend directory and your phone is on the same Wi-Fi network (System IP: 192.168.1.9).',
         );
       }
       throw lastError;
